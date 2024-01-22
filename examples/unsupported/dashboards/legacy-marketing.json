@@ -1,0 +1,11 @@
+{
+  "format": "looker.lookml/1",
+  "dashboardId": "marketing-legacy",
+  "title": "Marketing spend (exported from another tool)",
+  "tiles": [
+    { "id": "tile-spend", "title": "Spend", "queryId": "q-spend" }
+  ],
+  "queries": [
+    { "id": "q-spend", "modelIds": ["marketing.spend_monthly"] }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "format": "edilec.dashboard/v1",
+  "dashboardId": "revenue-weekly",
+  "title": "Revenue, weekly",
+  "tiles": [
+    { "id": "tile-arr", "title": "ARR", "queryId": "q-arr" },
+    { "id": "tile-churn", "title": "Churn rate", "queryId": "q-churn" }
+  ],
+  "queries": [
+    { "id": "q-arr", "description": "Monthly recurring revenue rolled to a year", "modelIds": ["finance.arr_monthly"] },
+    { "id": "q-churn", "description": "Cancellations over active subscriptions", "modelIds": ["finance.churn_monthly"] }
+  ]
+}
