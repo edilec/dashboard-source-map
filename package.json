@@ -1,17 +1,55 @@
 {
   "name": "dashboard-source-map",
-  "version": "0.0.0",
-  "description": "Map dashboard tiles to source queries, models and freshness evidence.",
+  "version": "0.1.0",
+  "description": "Map every dashboard tile to the query, models, transformations and freshness evidence behind it, and report broken links. Unsupported export formats are named, never guessed at; an ambiguous rename is never reported as a missing model. No network, no clock, no SQL parsing.",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test"
+    "lint": "node --check src/canonical.mjs && node --check src/documents.mjs && node --check src/index.mjs && node --check src/limits.mjs && node --check src/map.mjs && node --check src/models.mjs && node --check src/parse-failure.mjs && node --check src/report.mjs && node --check src/rules.mjs && node --check src/schema.mjs && node --check src/text.mjs && node --check src/write-guard.mjs && node --check bin/dashboard-source-map.mjs && node --check test/acceptance.test.mjs && node --check test/canonical.test.mjs && node --check test/cli.test.mjs && node --check test/confinement.test.mjs && node --check test/destination.test.mjs && node --check test/examples.test.mjs && node --check test/incomplete.test.mjs && node --check test/isolation.test.mjs && node --check test/limits.test.mjs && node --check test/ordering.test.mjs && node --check test/parse-failure.test.mjs && node --check test/sanitisation.test.mjs && node --check test/severity-exit.test.mjs && node --check test/support.mjs",
+    "test": "node --test",
+    "example": "node bin/dashboard-source-map.mjs --root examples/clean",
+    "example:renamed": "node bin/dashboard-source-map.mjs --root examples/renamed",
+    "example:broken": "node bin/dashboard-source-map.mjs --root examples/broken",
+    "example:unsupported": "node bin/dashboard-source-map.mjs --root examples/unsupported",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm test && npm run example && npm run pack:check"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/edilec/dashboard-source-map"
-  }
+    "url": "git+https://github.com/edilec/dashboard-source-map.git"
+  },
+  "bin": {
+    "dashboard-source-map": "./bin/dashboard-source-map.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dashboard",
+    "lineage",
+    "data-lineage",
+    "bi",
+    "source-map",
+    "freshness",
+    "analytics",
+    "data-engineering",
+    "cli"
+  ],
+  "author": "Edilec Private Limited",
+  "bugs": {
+    "url": "https://github.com/edilec/dashboard-source-map/issues"
+  },
+  "homepage": "https://github.com/edilec/dashboard-source-map#readme"
 }
