@@ -184,12 +184,25 @@ export function compileDashboard(document, limits = LIMITS) {
       if (!checkKeys(note, UNRESOLVED_KEYS, UNRESOLVED_KEYS, where, problems)) return null
       return cleanString(note.reason, `${where}/reason`, problems, limits.maxTextChars)
     }).filter((reason) => reason !== null)
+    const modelIds = identifierList(
+      entry.modelIds, `${at}/modelIds`, problems, limits, limits.maxQueryReferences, 'model references',
+    )
+    // A query that declares neither a model reference nor an unresolved source
+    // says nothing at all about what it reads. Recording the tile behind it as
+    // "resolved, reads nothing" would assert something the export never said,
+    // so the export is refused instead.
+    if (modelIds.length === 0 && unresolvedSources.length === 0) {
+      problems.add(
+        at,
+        'declares neither a model reference nor an unresolved source, so it says nothing about what it reads',
+      )
+    }
     return {
       id: cleanString(entry.id, `${at}/id`, problems, limits.maxIdentifierChars),
       description: entry.description === undefined || entry.description === null
         ? null
         : cleanString(entry.description, `${at}/description`, problems, limits.maxTextChars),
-      modelIds: identifierList(entry.modelIds, `${at}/modelIds`, problems, limits, limits.maxQueryReferences, 'model references'),
+      modelIds,
       unresolvedSources,
     }
   })

@@ -387,8 +387,9 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
     report.add('source-map-complete', {
       file: dashboardsDirectory,
       message:
-        `every one of ${tileCount} tile(s) across ${dashboards.length} dashboard(s) resolves to a query, a model `
-        + 'and a transformation, and every model reached carries freshness evidence',
+        `every one of ${tileCount} tile(s) across ${dashboards.length} dashboard(s) resolves to a query its `
+        + 'dashboard declares, every model that query names resolves in the model export, and every model '
+        + 'reached carries freshness evidence',
     })
   }
   return { report: report.finish(counts), map, touched }
