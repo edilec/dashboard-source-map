@@ -95,6 +95,11 @@ ignored, so a typo in `queryId` cannot silently become a tile with no source.
 not name* — the tool records it rather than pretending the query's model list is
 complete.
 
+A query must declare at least one of the two. A query with neither says nothing
+at all about what it reads, and a map recording the tile behind it as *resolved,
+reads nothing* would assert something the export never said, so such an export is
+refused with the pointer of the offending query.
+
 ## What it refuses to guess
 
 ### An unsupported format contributes nothing

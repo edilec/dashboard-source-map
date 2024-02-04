@@ -41,12 +41,22 @@ test('no source module reads a clock or the environment for data', () => {
   }
 })
 
-test('no source module parses SQL or reads query text', () => {
+test('the query schema has no field for query text, so there is nothing to parse', async () => {
+  const { compileDashboard } = await import('../src/index.mjs')
+  const withSql = {
+    format: 'edilec.dashboard/v1',
+    dashboardId: 'd',
+    tiles: [{ id: 't', queryId: 'q' }],
+    queries: [{ id: 'q', modelIds: ['m'], sql: 'SELECT 1 FROM finance.arr_monthly' }],
+  }
+  const compiled = compileDashboard(withSql)
+  assert.equal(compiled.ok, false, 'a query carrying SQL is refused, not silently parsed')
+  assert.deepEqual(compiled.problems.map((problem) => problem.pointer), ['/queries/0/sql'])
+  assert.match(compiled.problems[0].message, /is not a key this schema defines/)
+
   for (const file of sources()) {
     const text = readFileSync(file, 'utf8')
-    // The schema has no field for query text, so there is nothing to parse.
     assert.ok(!text.includes('queryText'), `${file} reads query text`)
-    assert.ok(!text.includes('SELECT '), `${file} looks at SQL`)
   }
 })
 
@@ -86,16 +96,21 @@ test('the observedAt label is copied verbatim and never parsed', (t) => {
   })
 })
 
-test('a run without --out changes nothing on disk', (t) => {
+test('a run without --out changes nothing anywhere under the root', (t) => {
   const directory = temporary(t)
   tree(directory)
-  const snapshot = () => readdirSync(join(directory, 'dashboards')).sort().map((name) => {
-    const info = statSync(join(directory, 'dashboards', name))
-    return `${name}:${info.size}:${info.mtimeMs}`
-  })
-  const before = snapshot()
-  runCli(['--root', directory, '--quiet'])
-  assert.deepEqual(snapshot(), before)
+  const walk = (base, prefix = '') => readdirSync(base, { withFileTypes: true })
+    .sort((left, right) => (left.name < right.name ? -1 : 1))
+    .flatMap((entry) => {
+      const path = join(base, entry.name)
+      if (entry.isDirectory()) return walk(path, `${prefix}${entry.name}/`)
+      const info = statSync(path)
+      return [`${prefix}${entry.name}:${info.size}:${info.mtimeMs}`]
+    })
+  const before = walk(directory)
+  const result = runCli(['--root', directory, '--quiet'])
+  assert.equal(result.status, 0)
+  assert.deepEqual(walk(directory), before)
 })
 
 test('the package declares no dependencies of any kind', () => {

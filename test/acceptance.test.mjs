@@ -160,6 +160,44 @@ test('a supported format whose structure is invalid also contributes no lineage'
   assert.deepEqual(written.dashboards.map((entry) => entry.dashboardId), ['revenue-weekly'])
 })
 
+test('a query that declares no source at all is refused rather than mapped as reading nothing', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'd.json': dashboard({
+        tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+        queries: [{ id: 'q-arr', description: 'Monthly ARR' }],
+      }),
+    },
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2)
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-invalid')
+  assert.equal(finding.location.pointer, '/queries/0')
+  assert.match(finding.message, /says nothing about what it reads/)
+  // And the map holds no tile claiming to have resolved to nothing.
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  assert.deepEqual(written.dashboards, [])
+})
+
+test('a query that names no model but declares an unresolved source is accepted', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'd.json': dashboard({
+        tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+        queries: [{ id: 'q-arr', unresolvedSources: [{ reason: 'the table name is built at run time' }] }],
+      }),
+    },
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2, 'an unresolved source is missing evidence, not a schema error')
+  assert.ok(ruleIds(result.report).includes('query-source-unresolved'))
+  assert.ok(!ruleIds(result.report).includes('dashboard-invalid'))
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  assert.equal(written.dashboards[0].tiles[0].lineage, 'unresolved')
+})
+
 test('FLAGSHIP: an ambiguous rename is never reported as a missing model', (t) => {
   const directory = temporary(t)
   tree(directory, {
