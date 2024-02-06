@@ -276,6 +276,26 @@ test('WITHOUT A MODEL EXPORT, no tile is called broken', (t) => {
   assert.deepEqual(written.models, [])
 })
 
+test('a broken tile-to-query link is still reported when the model export is unavailable', (t) => {
+  // Tile-to-query resolution is self-contained: nothing about it depends on the
+  // model export, so withholding it too would be the opposite error.
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 'tile-arr', queryId: 'q-gone' }] }) },
+    models: null,
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2, 'incomplete outranks fail')
+  assert.deepEqual(uniqueRuleIds(result.report), ['models-unreadable', 'query-missing'])
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  const tile = written.dashboards[0].tiles[0]
+  assert.equal(tile.lineage, 'broken')
+  assert.deepEqual(tile.unresolved, [
+    { reason: 'query-missing', requestedId: 'q-gone' },
+    { reason: 'model-export-unavailable' },
+  ])
+})
+
 test('a tile naming a query the dashboard does not declare is a broken link', (t) => {
   const directory = temporary(t)
   tree(directory, {
