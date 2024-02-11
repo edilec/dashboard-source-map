@@ -32,3 +32,12 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 - Declared bounds on document bytes, directory entries, dashboard files, tiles,
   queries, models, query references, upstream ids, previous ids, findings,
   identifier length and text length, enforced before the work.
+
+### Fixed
+
+- Path confinement is applied per file. A symbolic link planted among the
+  dashboard exports was followed out of the declared root, its content compiled
+  into the map, and the map named it by its in-root path — a false claim about
+  where the evidence came from, at exit 0. Every listed export now has its real
+  path resolved and asserted to be inside the real root before it is opened, and
+  one outside it is reported as `path-outside-root` and read from no further.

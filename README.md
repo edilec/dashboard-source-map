@@ -169,6 +169,7 @@ A dashboard directory holding no export this tool can read is reported as
 | `models-invalid` | error | the model export declares an unsupported format or does not match the schema |
 | `models-unreadable` | error | the model export could not be read, decoded or parsed |
 | `no-dashboard-read` | error | the dashboard directory could not be listed, or holds no export this tool can read |
+| `path-outside-root` | error | a dashboard export in the listing resolves outside the real root; nothing is read from it |
 | `query-missing` | error | a tile names a query its dashboard does not declare |
 | `query-source-unresolved` | warning | a query declares a source it could not name, so the tile's lineage is not complete |
 | `rename-ambiguous` | error | a former id is claimed by two models, or is also a live id; references to it resolve neither way |
@@ -253,9 +254,13 @@ shell redirection. This tool declares no confinement root for its output and
 does not pretend to: documenting a confinement the code does not perform reads
 as coverage and is worse than saying nothing.
 
-Declared input paths *are* confined. `--dashboards` and `--models` are relative
-to `--root`, and a path whose **real** location falls outside the **real** root
-is refused; a symbolic link planted inside the root does not widen it.
+Declared input paths *are* confined, **per file and not per directory**.
+`--dashboards` and `--models` are relative to `--root`, and every export the
+listing discovers has its own **real** path resolved and asserted to be inside
+the **real** root before it is opened. A symbolic link planted among the exports
+is refused as `path-outside-root` and contributes no tile, no query and no model
+edge, because a map that named it by its in-root path would be claiming that
+evidence read from elsewhere came from this root.
 
 ## Non-goals
 

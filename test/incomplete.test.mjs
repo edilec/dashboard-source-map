@@ -12,7 +12,7 @@
  * is a test below pinning that it does NOT make a run incomplete.
  */
 
-import { writeFileSync } from 'node:fs'
+import { symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -121,10 +121,19 @@ test('freshness-evidence-absent does NOT make a run incomplete', (t) => {
   assert.ok(!INCOMPLETE_RULES.includes('freshness-evidence-absent'))
 })
 
+test('path-outside-root', (t) => {
+  const directory = temporary(t)
+  const root = join(directory, 'root')
+  tree(root)
+  writeJson(directory, 'outside.json', dashboard({ dashboardId: 'outside' }))
+  symlinkSync(join(directory, 'outside.json'), join(root, 'dashboards', 'planted.json'))
+  assertIncomplete(map(root), 'path-outside-root', { errorsExpected: true })
+})
+
 test('every rule in INCOMPLETE_RULES has a scenario above', () => {
   assert.deepEqual([...INCOMPLETE_RULES].sort(), [
     'dashboard-format-undeclared', 'dashboard-format-unsupported', 'dashboard-invalid', 'dashboard-unreadable',
-    'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read', 'query-source-unresolved',
-    'rename-ambiguous',
+    'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read', 'path-outside-root',
+    'query-source-unresolved', 'rename-ambiguous',
   ])
 })

@@ -85,6 +85,16 @@ export async function resolveInside(realRoot, relativePath) {
  * than half-read. Every path listed is returned in `touched` whether or not it
  * is read, because every path this tool reasons about belongs in the set the
  * destination guard compares against.
+ *
+ * CONFINEMENT IS PER FILE, not per directory. Resolving the directory and then
+ * reading whatever the listing hands back is the hole this tool shipped with: a
+ * symbolic link planted among the exports was followed out of the declared root,
+ * its content was compiled into the map, and the map named it by its IN-ROOT
+ * path -- so nothing in the output revealed where the evidence came from. A map
+ * that claims to be the lineage of everything under one root, while quietly
+ * including content from outside it, is making a false claim about its own
+ * provenance. Every entry's REAL path is resolved here and asserted to be inside
+ * the REAL root before it is opened.
  */
 export async function listDashboardDirectory(realRoot, relativeDirectory, limits = LIMITS) {
   const resolved = await resolveInside(realRoot, relativeDirectory)
@@ -112,14 +122,24 @@ export async function listDashboardDirectory(realRoot, relativeDirectory, limits
   const touched = [...resolved.touched]
   const files = []
   const skipped = []
+  const refused = []
   for (const name of names) {
     const relative = `${relativeDirectory}/${name}`
-    touched.push(join(resolved.absolute, name))
+    const joined = join(resolved.absolute, name)
+    touched.push(joined)
     if (!name.endsWith('.json')) {
       skipped.push({ file: relative, reason: 'not-a-json-file' })
       continue
     }
-    files.push({ file: relative, absolute: join(resolved.absolute, name) })
+    const inside = await resolveInside(realRoot, relative)
+    touched.push(...inside.touched)
+    if (!inside.ok && inside.reason === 'outside-root') {
+      refused.push({ file: relative, reason: 'outside-root', detail: inside.detail })
+      continue
+    }
+    // A path that could not be resolved at all is left to the read, which
+    // reports why in the same words it uses for every other unreadable export.
+    files.push({ file: relative, absolute: inside.ok ? inside.absolute : joined })
   }
   if (files.length > limits.maxDashboardFiles) {
     return {
@@ -129,5 +149,5 @@ export async function listDashboardDirectory(realRoot, relativeDirectory, limits
       touched,
     }
   }
-  return { ok: true, files, skipped, touched }
+  return { ok: true, files, skipped, refused, touched }
 }

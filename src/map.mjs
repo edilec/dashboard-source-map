@@ -246,6 +246,17 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   let brokenCount = 0
   let unresolvedCount = 0
 
+  for (const entry of listing.refused) {
+    unreadable.push({ file: entry.file, reason: entry.reason })
+    report.add('path-outside-root', {
+      file: entry.file,
+      message:
+        `this dashboard export ${entry.detail}; no tile, query or model edge is taken from it, so the map `
+        + 'does not name an in-root path for evidence that was read somewhere else',
+      suggestion: 'name the real path with --dashboards, or move the export inside the root',
+    })
+  }
+
   for (const candidate of listing.files) {
     const document = await readJsonDocument(candidate.absolute, limits)
     if (!document.ok) {
