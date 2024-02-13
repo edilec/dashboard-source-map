@@ -32,6 +32,10 @@ export function buildModelIndex(models) {
   const ambiguous = new Map()
   for (const [former, claimants] of previous) {
     const sorted = [...claimants].sort(byCodeUnit)
+    // A model naming its own live id as a former id is odd, but it is not
+    // ambiguous: exactly one model answers to that id either way, so refusing
+    // to resolve it would be a finding raised on an export nobody has to fix.
+    if (sorted.length === 1 && sorted[0] === former) continue
     if (live.has(former)) {
       ambiguous.set(former, {
         reason: 'still-live',
@@ -58,12 +62,20 @@ export function buildModelIndex(models) {
  * `resolved` through a recorded rename, `ambiguous` when the index holds more
  * than one candidate, and `missing` when the index holds none. Only the last
  * one asserts that nothing provides the id.
+ *
+ * AMBIGUITY IS CHECKED FIRST, and the order is the whole rule. Checking the
+ * live table first let a live id silently win a collision it is one half of:
+ * the tile came out `resolved`, via `id`, with no tile-level finding, while the
+ * report beside it said "references to it are not resolved either way". A
+ * reference to an id that is both a live model and a recorded former id could
+ * mean either model, and picking one because its entry was consulted first is
+ * the tool choosing an answer the export did not give.
  */
 export function resolveModel(index, id) {
-  const direct = index.live.get(id)
-  if (direct !== undefined) return { state: 'resolved', model: direct, via: 'id' }
   const collision = index.ambiguous.get(id)
   if (collision !== undefined) return { state: 'ambiguous', ...collision }
+  const direct = index.live.get(id)
+  if (direct !== undefined) return { state: 'resolved', model: direct, via: 'id' }
   const claimants = index.previous.get(id)
   if (claimants !== undefined) {
     return { state: 'resolved', model: index.live.get(claimants[0]), via: 'previousId' }

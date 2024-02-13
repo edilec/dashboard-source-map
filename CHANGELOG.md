@@ -41,3 +41,8 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   where the evidence came from, at exit 0. Every listed export now has its real
   path resolved and asserted to be inside the real root before it is opened, and
   one outside it is reported as `path-outside-root` and read from no further.
+- An ambiguous former id is reported as ambiguous even when it is also a live
+  model id. The live table was consulted before the ambiguity table, so the live
+  model silently won the collision: the tile came out `resolved`, via `id`, with
+  no tile-level finding, while the report beside it said references to that id
+  resolve neither way. The test named for this case never inspected the tile.

@@ -250,10 +250,51 @@ test('a former id that is also a live model id is ambiguous, not resolved to eit
       { id: 'finance.churn_monthly', transformation: { id: 'churn-rollup', version: '1.4.2' }, freshness: freshness() },
     ]),
   })
-  const result = map(directory)
+  const result = map(directory, ['--out', join(directory, 'map.json')])
   assert.equal(result.status, 2)
-  assert.ok(ruleIds(result.report).includes('rename-ambiguous'))
+  assert.equal(result.report.status, 'incomplete')
   assert.ok(!ruleIds(result.report).includes('model-renamed'), 'a live id must not silently win the collision')
+  assert.ok(!ruleIds(result.report).includes('model-missing'), 'and it is never downgraded to missing either')
+  const tileFinding = result.report.findings.find(
+    (finding) => finding.ruleId === 'rename-ambiguous' && finding.location.pointer === '/tiles/tile-arr',
+  )
+  assert.ok(tileFinding !== undefined, 'the impacted tile is named, not just the model export')
+  assert.match(tileFinding.message, /is claimed as a former id by "finance\.arr_by_month" and is also a live model id/)
+
+  // The assertion the previous version of this test was missing. The report
+  // said "references to it are not resolved either way" while the map beside
+  // it resolved them to the live model, via "id", with nothing to show for it.
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  const tile = written.dashboards[0].tiles.find((entry) => entry.id === 'tile-arr')
+  assert.equal(tile.lineage, 'unresolved', 'not resolved to the live model, and not broken either')
+  assert.deepEqual(tile.models, [], 'a collision produces no lineage edge')
+  assert.deepEqual(tile.unresolved, [{
+    reason: 'rename-ambiguous',
+    requestedId: 'finance.arr_monthly',
+    detail: tileFinding.message.slice(tileFinding.message.indexOf('"finance.arr_monthly" is claimed')),
+  }])
+})
+
+test('ALLOWED: a model naming its own live id as a former id still resolves', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    models: modelExport([
+      {
+        id: 'finance.arr_monthly',
+        previousIds: ['finance.arr_monthly'],
+        transformation: { id: 'arr-rollup', version: '2.1.0' },
+        freshness: freshness(),
+      },
+      { id: 'finance.churn_monthly', transformation: { id: 'churn-rollup', version: '1.4.2' }, freshness: freshness() },
+    ]),
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 0, 'exactly one model answers to that id, so nothing is ambiguous')
+  assert.deepEqual(ruleIds(result.report), ['source-map-complete'])
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  const tile = written.dashboards[0].tiles.find((entry) => entry.id === 'tile-arr')
+  assert.equal(tile.lineage, 'resolved')
+  assert.equal(tile.models[0].via, 'id')
 })
 
 test('WITHOUT A MODEL EXPORT, no tile is called broken', (t) => {

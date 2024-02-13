@@ -125,7 +125,10 @@ provides that id, made on evidence discarded a moment earlier.
 
 Ambiguity is recorded instead. A reference to an ambiguous id is reported as
 `rename-ambiguous`, the tile's lineage is `unresolved` — not `resolved`, not
-`broken` — and the run is `incomplete`.
+`broken` — and the run is `incomplete`. Ambiguity is checked *before* the live
+table, so an id that is both a live model and a recorded former id does not
+quietly resolve to the live one. A model naming its own live id as a former id
+is not a collision: exactly one model answers to that id either way.
 
 ### Without a model export, no tile is called broken
 
