@@ -393,14 +393,25 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   // Added through the same path as every other finding, so it takes its
   // severity from the frozen table and sorts with the rest. A finding appended
   // to a finished report is a finding outside both.
-  const clean = !report.incomplete && !report.findings.some((finding) => finding.severity !== 'info')
+  //
+  // The claim is about the MAP, so it is derived from the map. Deriving it from
+  // finding severities alone was right only by accident: every unresolved
+  // reason currently carries a non-info finding, so deleting a single
+  // `report.add` was enough to make the completion claim fire beside
+  // `unresolvedTiles: 2`. The counts below come from the tiles themselves and
+  // say what the sentence says.
+  const everyTileResolved = brokenCount === 0 && unresolvedCount === 0
+  const clean = !report.incomplete
+    && everyTileResolved
+    && !report.findings.some((finding) => finding.severity !== 'info')
   if (clean && tileCount > 0) {
     report.add('source-map-complete', {
       file: dashboardsDirectory,
       message:
         `every one of ${tileCount} tile(s) across ${dashboards.length} dashboard(s) resolves to a query its `
         + 'dashboard declares, every model that query names resolves in the model export, and every model '
-        + 'reached carries freshness evidence',
+        + 'reached carries freshness evidence (a model may legitimately declare no transformation: a raw '
+        + 'source is not produced by one)',
     })
   }
   return { report: report.finish(counts), map, touched }

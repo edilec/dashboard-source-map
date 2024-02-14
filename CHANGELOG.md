@@ -46,3 +46,13 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   model silently won the collision: the tile came out `resolved`, via `id`, with
   no tile-level finding, while the report beside it said references to that id
   resolve neither way. The test named for this case never inspected the tile.
+- `source-map-complete` is derived from the map it describes. It was computed
+  from finding severities alone, which was right only because every unresolved
+  reason happens to carry a non-info finding; deleting one `report.add` made the
+  completion claim fire beside `unresolvedTiles: 2`. Both `models-invalid`
+  branches — an unsupported model-export format and an undeclared one — now have
+  tests that fail when the refusal is removed.
+- The `source-map-complete` row of the README rule table no longer claims every
+  tile resolves to a *transformation*. A raw source is not produced by one, and
+  the finding message was corrected for that in an earlier commit while the
+  table was left behind.

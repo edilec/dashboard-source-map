@@ -176,7 +176,7 @@ A dashboard directory holding no export this tool can read is reported as
 | `query-missing` | error | a tile names a query its dashboard does not declare |
 | `query-source-unresolved` | warning | a query declares a source it could not name, so the tile's lineage is not complete |
 | `rename-ambiguous` | error | a former id is claimed by two models, or is also a live id; references to it resolve neither way |
-| `source-map-complete` | info | every tile resolves to a query, a model and a transformation, with freshness evidence |
+| `source-map-complete` | info | no tile is broken or unresolved: every tile resolves to a query its dashboard declares and to models the export provides, each with freshness evidence |
 | `upstream-missing` | error | a model declares an upstream no model in the export declares |
 
 Severity is taken from one frozen table in `src/rules.mjs` and an unknown rule id

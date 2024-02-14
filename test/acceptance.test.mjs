@@ -440,3 +440,75 @@ test('an empty dashboard directory is not a green run either', (t) => {
   assert.deepEqual(uniqueRuleIds(result.report), ['no-dashboard-read'])
   assert.equal(result.report.summary.checked, 0)
 })
+
+/**
+ * The model export's format is read first and on its own, exactly as a
+ * dashboard's is. Both refusals are pinned here because removing either one
+ * made an unreadable index exit 0 with `source-map-complete` while every tile
+ * in the map was still unresolved.
+ */
+for (const { label, models, expected } of [
+  {
+    label: 'declares a format this tool does not read',
+    models: { format: 'dbt.manifest/v12', models: [] },
+    expected: /declares format "dbt\.manifest\/v12", which this tool does not support/,
+  },
+  {
+    label: 'declares no format at all',
+    models: { models: [] },
+    expected: /declares no format, so this tool cannot know what it is reading/,
+  },
+  {
+    label: 'is not an object',
+    models: [],
+    expected: /the model export is array, not an object/,
+  },
+]) {
+  test(`a model export that ${label} is named, and no tile is called broken`, (t) => {
+    const directory = temporary(t)
+    tree(directory)
+    writeJson(directory, 'models.json', models)
+    const result = map(directory, ['--out', join(directory, 'map.json')])
+    assert.equal(result.status, 2)
+    assert.equal(result.report.status, 'incomplete')
+    const finding = result.report.findings.find((entry) => entry.ruleId === 'models-invalid')
+    assert.ok(finding !== undefined, 'the index this run could not use is named')
+    assert.match(finding.message, expected)
+    assert.ok(!ruleIds(result.report).includes('model-missing'), 'an index that would not load makes no claim about a tile')
+    assert.ok(
+      !ruleIds(result.report).includes('source-map-complete'),
+      'a completion claim over a map whose every tile is unresolved is the invented answer this pins',
+    )
+    const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+    assert.equal(result.report.summary.unresolvedTiles, 2)
+    assert.deepEqual(
+      written.dashboards[0].tiles.map((tile) => [tile.lineage, tile.unresolved[0].reason]),
+      [['unresolved', 'model-export-unavailable'], ['unresolved', 'model-export-unavailable']],
+    )
+  })
+}
+
+test('the completion claim and the counts it describes never disagree', (t) => {
+  const scenarios = [
+    { label: 'a clean pair', build: (directory) => tree(directory) },
+    {
+      label: 'a broken model reference',
+      build: (directory) => tree(directory, { models: modelExport([{ id: 'finance.arr_monthly', freshness: freshness() }]) }),
+    },
+    {
+      label: 'a query a tile names but the dashboard does not declare',
+      build: (directory) => tree(directory, {
+        dashboards: { 'revenue.json': dashboard({ tiles: [{ id: 'tile-arr', queryId: 'q-gone' }] }) },
+      }),
+    },
+    { label: 'no model export', build: (directory) => tree(directory, { models: null }) },
+  ]
+  for (const { label, build } of scenarios) {
+    const directory = temporary(t)
+    build(directory)
+    const result = map(directory)
+    const complete = ruleIds(result.report).includes('source-map-complete')
+    const resolved = result.report.summary.broken === 0 && result.report.summary.unresolvedTiles === 0
+    assert.equal(complete, resolved && result.report.status === 'pass', `${label}: the claim must match the map`)
+  }
+})
