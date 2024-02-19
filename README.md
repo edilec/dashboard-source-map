@@ -135,7 +135,10 @@ is not a collision: exactly one model answers to that id either way.
 `model-missing` is a positive claim. A run that could not read the model export
 has no basis for it, so it makes none: the model export is reported as
 unreadable, every tile's lineage is `unresolved` with `model-export-unavailable`
-recorded against it, and no tile is reported as broken. Reporting every tile as
+recorded against it, and no tile is reported as broken. What *is* still reported
+is everything the dashboard export says on its own — a tile naming a query the
+dashboard does not declare, and a query's declared `unresolvedSources` — because
+withholding those too would be the opposite error. Reporting every tile as
 broken because the index failed to load would be a finding raised on correct
 input, which is the worst defect a checker can have.
 

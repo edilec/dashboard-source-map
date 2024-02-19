@@ -512,3 +512,33 @@ test('the completion claim and the counts it describes never disagree', (t) => {
     assert.equal(complete, resolved && result.report.status === 'pass', `${label}: the claim must match the map`)
   }
 })
+
+test('a query\'s declared unresolved source survives an unavailable model export', (t) => {
+  // The same argument as the tile-to-query link above. `unresolvedSources` is
+  // the export saying "this query reads something I could not name", which is
+  // self-contained and has nothing to do with the model index. Dropping it left
+  // the map showing only model-export-unavailable, so a consumer would conclude
+  // the tile resolves once the model export is fixed.
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'd.json': dashboard({
+        tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+        queries: [{
+          id: 'q-arr',
+          modelIds: ['finance.arr_monthly'],
+          unresolvedSources: [{ reason: 'the table name is built at run time' }],
+        }],
+      }),
+    },
+    models: null,
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2)
+  assert.deepEqual(uniqueRuleIds(result.report), ['models-unreadable', 'query-source-unresolved'])
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  assert.deepEqual(written.dashboards[0].tiles[0].unresolved, [
+    { reason: 'query-source-unresolved', detail: 'the table name is built at run time' },
+    { reason: 'model-export-unavailable' },
+  ])
+})

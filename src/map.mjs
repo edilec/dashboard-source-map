@@ -105,6 +105,25 @@ async function loadModels({ realRoot, modelsFile, limits, report, touched }) {
   return { available: true, models: compiled.models, index }
 }
 
+function reportQuerySources({ query, tile, report, file, unresolved }) {
+  // A query's declared unresolvedSources are the export saying "this query
+  // reads something I could not name". That declaration is self-contained: it
+  // has nothing to do with the model index, so it survives a run that could not
+  // read one. Dropping it left a consumer reading only model-export-unavailable
+  // and concluding the tile would resolve once the model export was fixed.
+  for (const reason of query.unresolvedSources) {
+    unresolved.push({ reason: 'query-source-unresolved', detail: reason })
+    report.add('query-source-unresolved', {
+      file,
+      pointer: `/tiles/${tile.id}`,
+      message:
+        `the query "${query.id}" behind tile "${tile.id}" declares a source it could not resolve (${reason}), `
+        + 'so this tile\'s lineage is not complete',
+      suggestion: 'resolve the source in the export, or accept that this tile has an unmapped dependency',
+    })
+  }
+}
+
 function mapTile({ tile, queries, models, report, file, dashboardId, usage }) {
   const unresolved = []
   const resolvedModels = []
@@ -123,6 +142,7 @@ function mapTile({ tile, queries, models, report, file, dashboardId, usage }) {
   }
 
   if (!models.available) {
+    if (query !== undefined) reportQuerySources({ query, tile, report, file, unresolved })
     unresolved.push({ reason: 'model-export-unavailable' })
     return {
       tile: {
@@ -137,17 +157,7 @@ function mapTile({ tile, queries, models, report, file, dashboardId, usage }) {
   }
 
   if (query !== undefined) {
-    for (const reason of query.unresolvedSources) {
-      unresolved.push({ reason: 'query-source-unresolved', detail: reason })
-      report.add('query-source-unresolved', {
-        file,
-        pointer: `/tiles/${tile.id}`,
-        message:
-          `the query "${query.id}" behind tile "${tile.id}" declares a source it could not resolve (${reason}), `
-          + 'so this tile\'s lineage is not complete',
-        suggestion: 'resolve the source in the export, or accept that this tile has an unmapped dependency',
-      })
-    }
+    reportQuerySources({ query, tile, report, file, unresolved })
     for (const requestedId of [...query.modelIds].sort(byCodeUnit)) {
       const outcome = resolveModel(models.index, requestedId)
       if (outcome.state === 'missing') {

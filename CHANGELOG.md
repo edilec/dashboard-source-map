@@ -56,3 +56,7 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   tile resolves to a *transformation*. A raw source is not produced by one, and
   the finding message was corrected for that in an earlier commit while the
   table was left behind.
+- A query's declared `unresolvedSources` survives a run that could not read the
+  model export. It was dropped from both the report and the map, leaving a
+  consumer with only `model-export-unavailable` and the conclusion that the tile
+  would resolve once the model export was fixed.
