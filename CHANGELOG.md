@@ -60,3 +60,9 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   model export. It was dropped from both the report and the map, leaving a
   consumer with only `model-export-unavailable` and the conclusion that the tile
   would resolve once the model export was fixed.
+- Two export files declaring one `dashboardId` are reported as
+  `dashboard-id-duplicated` and the second contributes no lineage. The map keys
+  `models[].usedByTiles` by `dashboardId/tileId`, so two files claiming one id
+  collapsed two different tiles into one key: the entry could not be resolved
+  back to a file, the count of tiles reaching a model under-reported, and the
+  map contradicted its own `dashboards[]` list.

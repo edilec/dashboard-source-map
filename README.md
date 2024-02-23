@@ -163,6 +163,7 @@ A dashboard directory holding no export this tool can read is reported as
 | ruleId | severity | raised when |
 | --- | --- | --- |
 | `dashboard-file-skipped` | info | a directory entry is not a `.json` file, so it was listed and not read |
+| `dashboard-id-duplicated` | error | two export files declare one `dashboardId`; the second contributes no lineage |
 | `dashboard-format-undeclared` | error | a dashboard export declares no format; no lineage is read from it |
 | `dashboard-format-unsupported` | error | a dashboard export declares a format this tool does not read; no lineage is read from it |
 | `dashboard-invalid` | error | a supported-format dashboard does not match the schema; no lineage is read from it |

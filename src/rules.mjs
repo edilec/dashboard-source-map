@@ -12,6 +12,7 @@
  */
 export const RULE_SEVERITY = Object.freeze({
   'dashboard-file-skipped': 'info',
+  'dashboard-id-duplicated': 'error',
   'dashboard-format-undeclared': 'error',
   'dashboard-format-unsupported': 'error',
   'dashboard-invalid': 'error',
@@ -47,6 +48,7 @@ export const RULE_SEVERITY = Object.freeze({
  * omitting it or guessing. Nothing failed to be obtained.
  */
 export const INCOMPLETE_RULES = Object.freeze([
+  'dashboard-id-duplicated',
   'dashboard-format-undeclared',
   'dashboard-format-unsupported',
   'dashboard-invalid',

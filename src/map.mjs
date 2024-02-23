@@ -252,6 +252,7 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   const unreadable = []
   const unsupported = []
   const usage = new Map()
+  const declaredBy = new Map()
   let tileCount = 0
   let brokenCount = 0
   let unresolvedCount = 0
@@ -313,6 +314,24 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
     }
 
     const dashboard = compiled.dashboard
+    // The map keys every tile by `dashboardId/tileId`, so two export files
+    // claiming one dashboard id produce entries that cannot be resolved back to
+    // a file and a usage count that under-reports. The second file is named and
+    // contributes nothing rather than being merged into the first.
+    const claimed = declaredBy.get(dashboard.dashboardId)
+    if (claimed !== undefined) {
+      unsupported.push({ file: candidate.file, declaredFormat: format.format, reason: 'duplicate-dashboard-id' })
+      report.add('dashboard-id-duplicated', {
+        file: candidate.file,
+        pointer: '/dashboardId',
+        message:
+          `this export declares dashboard id "${dashboard.dashboardId}", which "${claimed}" already declared; `
+          + 'the map keys every tile by dashboard id, so no tile, query or model edge is taken from this file',
+        suggestion: 'give each dashboard export its own dashboardId, or remove the duplicate export',
+      })
+      continue
+    }
+    declaredBy.set(dashboard.dashboardId, candidate.file)
     const tiles = []
     for (const tile of [...dashboard.tiles].sort((left, right) => byCodeUnit(left.id, right.id))) {
       const mapped = mapTile({

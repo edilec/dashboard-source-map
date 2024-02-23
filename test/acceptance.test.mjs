@@ -542,3 +542,40 @@ test('a query\'s declared unresolved source survives an unavailable model export
     { reason: 'model-export-unavailable' },
   ])
 })
+
+test('two export files declaring one dashboard id are not merged into one', (t) => {
+  // models[].usedByTiles is keyed `dashboardId/tileId`. Two files claiming one
+  // id made two different tiles in two different files collapse into a single
+  // key, so the entry could not be resolved back to a file and the count of
+  // tiles reaching a model under-reported -- while dashboards[] correctly
+  // listed both files, so the map contradicted its own index.
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'a.json': dashboard({
+        tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+        queries: [{ id: 'q-arr', modelIds: ['finance.arr_monthly'] }],
+      }),
+      'b.json': dashboard({
+        tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+        queries: [{ id: 'q-arr', modelIds: ['finance.churn_monthly'] }],
+      }),
+    },
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2)
+  assert.equal(result.report.status, 'incomplete')
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-id-duplicated')
+  assert.ok(finding !== undefined)
+  assert.equal(finding.location.file, 'dashboards/b.json', 'the first file in code-unit order keeps the id')
+  assert.match(finding.message, /which "dashboards\/a\.json" already declared/)
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  assert.deepEqual(written.dashboards.map((entry) => entry.file), ['dashboards/a.json'])
+  assert.deepEqual(written.unsupported, [{
+    file: 'dashboards/b.json',
+    declaredFormat: 'edilec.dashboard/v1',
+    reason: 'duplicate-dashboard-id',
+  }])
+  const churn = written.models.find((model) => model.id === 'finance.churn_monthly')
+  assert.deepEqual(churn.usedByTiles, [], 'no edge is claimed for a file no lineage was taken from')
+})

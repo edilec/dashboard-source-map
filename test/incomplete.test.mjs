@@ -58,6 +58,12 @@ test('dashboard-invalid', (t) => {
   assertIncomplete(map(directory), 'dashboard-invalid', { errorsExpected: true })
 })
 
+test('dashboard-id-duplicated', (t) => {
+  const directory = temporary(t)
+  tree(directory, { dashboards: { 'a.json': dashboard(), 'b.json': dashboard() } })
+  assertIncomplete(map(directory), 'dashboard-id-duplicated', { errorsExpected: true })
+})
+
 test('models-unreadable', (t) => {
   const directory = temporary(t)
   tree(directory, { models: null })
@@ -132,8 +138,8 @@ test('path-outside-root', (t) => {
 
 test('every rule in INCOMPLETE_RULES has a scenario above', () => {
   assert.deepEqual([...INCOMPLETE_RULES].sort(), [
-    'dashboard-format-undeclared', 'dashboard-format-unsupported', 'dashboard-invalid', 'dashboard-unreadable',
-    'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read', 'path-outside-root',
-    'query-source-unresolved', 'rename-ambiguous',
+    'dashboard-format-undeclared', 'dashboard-format-unsupported', 'dashboard-id-duplicated', 'dashboard-invalid',
+    'dashboard-unreadable', 'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read',
+    'path-outside-root', 'query-source-unresolved', 'rename-ambiguous',
   ])
 })
