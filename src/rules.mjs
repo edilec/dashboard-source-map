@@ -26,6 +26,7 @@ export const RULE_SEVERITY = Object.freeze({
   'models-unreadable': 'error',
   'no-dashboard-read': 'error',
   'path-outside-root': 'error',
+  'path-unrenderable': 'error',
   'query-missing': 'error',
   'query-source-unresolved': 'warning',
   'rename-ambiguous': 'error',
@@ -58,6 +59,7 @@ export const INCOMPLETE_RULES = Object.freeze([
   'models-unreadable',
   'no-dashboard-read',
   'path-outside-root',
+  'path-unrenderable',
   'query-source-unresolved',
   'rename-ambiguous',
 ])

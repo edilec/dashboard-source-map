@@ -257,6 +257,22 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   let brokenCount = 0
   let unresolvedCount = 0
 
+  // A name that does not survive rendering is refused rather than listed under
+  // a name that is not its name. The code points are named because the rendered
+  // forms of two such entries can be identical: "this differs from what you
+  // see" is the `kWh -> kWh` report again, and it tells the reader nothing.
+  for (const entry of listing.unnameable) {
+    unreadable.push({ file: entry.file, reason: entry.reason })
+    report.add('path-unrenderable', {
+      file: entry.file,
+      message:
+        `this directory entry carries ${entry.codePoints.join(', ')} in its name, which the report and the map `
+        + 'strip before rendering, so the name shown here is not the name on disk and nothing in this map could '
+        + 'name the file faithfully; it was not read',
+      suggestion: 'rename the file to characters that render as themselves, and run again',
+    })
+  }
+
   for (const entry of listing.refused) {
     unreadable.push({ file: entry.file, reason: entry.reason })
     report.add('path-outside-root', {
@@ -276,6 +292,11 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
       continue
     }
     const format = declaredFormat(document.value)
+    // The map records what the FINDING says, not the raw bytes. `declaredFormat`
+    // is document content: a format string carrying U+0085 or U+202E forges a
+    // line or reverses one in any consumer that prints the map, and
+    // `JSON.stringify` escapes neither.
+    const renderedFormat = format.ok ? excerpt(format.format, 80) : null
     if (!format.ok) {
       unsupported.push({ file: candidate.file, declaredFormat: null, reason: 'undeclared-format' })
       report.add('dashboard-format-undeclared', {
@@ -289,7 +310,7 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
       continue
     }
     if (!SUPPORTED_DASHBOARD_FORMATS.includes(format.format)) {
-      unsupported.push({ file: candidate.file, declaredFormat: format.format, reason: 'unsupported-format' })
+      unsupported.push({ file: candidate.file, declaredFormat: renderedFormat, reason: 'unsupported-format' })
       report.add('dashboard-format-unsupported', {
         file: candidate.file,
         pointer: '/format',
@@ -302,7 +323,7 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
     }
     const compiled = compileDashboard(document.value, limits)
     if (!compiled.ok) {
-      unsupported.push({ file: candidate.file, declaredFormat: format.format, reason: 'invalid-document' })
+      unsupported.push({ file: candidate.file, declaredFormat: renderedFormat, reason: 'invalid-document' })
       for (const problem of compiled.problems) {
         report.add('dashboard-invalid', {
           file: candidate.file,
@@ -320,7 +341,7 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
     // contributes nothing rather than being merged into the first.
     const claimed = declaredBy.get(dashboard.dashboardId)
     if (claimed !== undefined) {
-      unsupported.push({ file: candidate.file, declaredFormat: format.format, reason: 'duplicate-dashboard-id' })
+      unsupported.push({ file: candidate.file, declaredFormat: renderedFormat, reason: 'duplicate-dashboard-id' })
       report.add('dashboard-id-duplicated', {
         file: candidate.file,
         pointer: '/dashboardId',

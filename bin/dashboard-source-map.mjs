@@ -25,6 +25,7 @@ import {
   assertWritableDestination,
   buildSourceMap,
   canonicalDocument,
+  controlCodePoints,
   exitCodeFor,
   formatReport,
   resolveRoot,
@@ -149,6 +150,13 @@ function relativeOption(values, flag, fallback) {
   if (value.startsWith('/')) throw new ConfigError(`option "${flag}" is relative to --root, and this path is absolute`)
   if (value.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
     throw new ConfigError(`option "${flag}" must not contain an empty, "." or ".." segment`)
+  }
+  // This path is rendered into every finding and into every entry of the map.
+  // A path that renders as something other than itself would name a file the
+  // reader cannot find, so it is refused here rather than stripped later.
+  const points = controlCodePoints(value)
+  if (points.length > 0) {
+    throw new ConfigError(`option "${flag}" carries ${points.join(', ')}, which cannot be rendered in a report`)
   }
   return value
 }

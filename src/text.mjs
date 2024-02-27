@@ -89,6 +89,32 @@ export function sanitise(value) {
 }
 
 /**
+ * Which characters of the control class a value carries, as code points.
+ *
+ * A message that says only "this differs from what will be rendered" leaves the
+ * reader unable to act: two values that differ by a stripped character are told
+ * apart by naming the character, not by naming the class. The catalog's emblem
+ * of the opposite is a report reading `unit changed from kWh to kWh`, where the
+ * whole difference was a trailing space and the rendered forms were identical.
+ *
+ * Only the code points are returned. Reproducing the characters themselves is
+ * the thing this module exists to prevent.
+ */
+export function controlCodePoints(value) {
+  if (typeof value !== 'string') return []
+  const found = value.match(CONTROL) ?? []
+  const seen = new Set()
+  const points = []
+  for (const character of found) {
+    const point = `U+${character.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`
+    if (seen.has(point)) continue
+    seen.add(point)
+    points.push(point)
+  }
+  return points.sort(byCodeUnit)
+}
+
+/**
  * The rendered form of a string field, or `null` when there is nothing to
  * render.
  *

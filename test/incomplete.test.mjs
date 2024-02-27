@@ -136,10 +136,21 @@ test('path-outside-root', (t) => {
   assertIncomplete(map(root), 'path-outside-root', { errorsExpected: true })
 })
 
+test('path-unrenderable', (t) => {
+  const directory = temporary(t)
+  tree(directory)
+  writeFileSync(
+    join(directory, 'dashboards', `planted${String.fromCharCode(0x202e)}.json`),
+    `${JSON.stringify(dashboard({ dashboardId: 'planted' }))}\n`,
+    'utf8',
+  )
+  assertIncomplete(map(directory), 'path-unrenderable', { errorsExpected: true })
+})
+
 test('every rule in INCOMPLETE_RULES has a scenario above', () => {
   assert.deepEqual([...INCOMPLETE_RULES].sort(), [
     'dashboard-format-undeclared', 'dashboard-format-unsupported', 'dashboard-id-duplicated', 'dashboard-invalid',
     'dashboard-unreadable', 'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read',
-    'path-outside-root', 'query-source-unresolved', 'rename-ambiguous',
+    'path-outside-root', 'path-unrenderable', 'query-source-unresolved', 'rename-ambiguous',
   ])
 })

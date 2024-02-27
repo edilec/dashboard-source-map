@@ -35,6 +35,17 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Control, bidi and line-separator characters no longer reach the written source
+  map. The report on stdout was built through a sanitising constructor, but the
+  map is serialised with `JSON.stringify`, which escapes neither the C1 range
+  nor U+2028/U+2029 nor any bidi control — and two fields never passed through
+  the sanitiser at all: the `declaredFormat` of an unsupported export, and every
+  `file` path, which comes from the directory listing. A directory entry whose
+  name carries one of those characters is now refused as `path-unrenderable`,
+  named by the code points it carries, and read no further; `--dashboards` and
+  `--models` are refused for the same reason as a configuration error. The
+  sanitisation suite now asserts on the bytes of the file named by `--out`,
+  which is what its header always claimed.
 - Path confinement is applied per file. A symbolic link planted among the
   dashboard exports was followed out of the declared root, its content compiled
   into the map, and the map named it by its in-root path — a false claim about

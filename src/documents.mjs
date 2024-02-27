@@ -17,7 +17,7 @@ import { join, resolve, sep } from 'node:path'
 
 import { LIMITS } from './limits.mjs'
 import { parseFailureDetail } from './parse-failure.mjs'
-import { byCodeUnit, decodeUtf8 } from './text.mjs'
+import { byCodeUnit, controlCodePoints, decodeUtf8, sanitise } from './text.mjs'
 
 export async function resolveRoot(root) {
   return realpath(resolve(root))
@@ -123,15 +123,29 @@ export async function listDashboardDirectory(realRoot, relativeDirectory, limits
   const files = []
   const skipped = []
   const refused = []
+  const unnameable = []
   for (const name of names) {
-    const relative = `${relativeDirectory}/${name}`
+    // The path is RENDERED here, and the rendered form is what every consumer
+    // of the map and the report sees. A name carrying the control class cannot
+    // be rendered faithfully -- U+202E alone makes one file read as another --
+    // so such an entry is refused and named by its code points rather than
+    // silently listed under a name that is not its name.
+    const declared = `${relativeDirectory}/${name}`
+    const relative = sanitise(declared)
     const joined = join(resolved.absolute, name)
     touched.push(joined)
+    const points = controlCodePoints(name)
+    if (points.length > 0) {
+      unnameable.push({ file: relative, reason: 'unrenderable-name', codePoints: points })
+      continue
+    }
     if (!name.endsWith('.json')) {
       skipped.push({ file: relative, reason: 'not-a-json-file' })
       continue
     }
-    const inside = await resolveInside(realRoot, relative)
+    // Resolution uses the path as it is on disk; only the rendered form is
+    // sanitised. Resolving the rendered form would open a different file.
+    const inside = await resolveInside(realRoot, declared)
     touched.push(...inside.touched)
     if (!inside.ok && inside.reason === 'outside-root') {
       refused.push({ file: relative, reason: 'outside-root', detail: inside.detail })
@@ -149,5 +163,5 @@ export async function listDashboardDirectory(realRoot, relativeDirectory, limits
       touched,
     }
   }
-  return { ok: true, files, skipped, refused, touched }
+  return { ok: true, files, skipped, refused, unnameable, touched }
 }

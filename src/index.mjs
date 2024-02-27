@@ -27,6 +27,16 @@ export {
   compileModelExport,
   declaredFormat,
 } from './schema.mjs'
-export { EXCERPT_LIMIT, byCodeUnit, decodeUtf8, excerpt, isPlainObject, renderable, sanitise, typeName } from './text.mjs'
+export {
+  EXCERPT_LIMIT,
+  byCodeUnit,
+  controlCodePoints,
+  decodeUtf8,
+  excerpt,
+  isPlainObject,
+  renderable,
+  sanitise,
+  typeName,
+} from './text.mjs'
 export { UNPARSEABLE, parseFailureDetail } from './parse-failure.mjs'
 export { DestinationError, assertWritableDestination } from './write-guard.mjs'

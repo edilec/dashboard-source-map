@@ -177,6 +177,7 @@ A dashboard directory holding no export this tool can read is reported as
 | `models-unreadable` | error | the model export could not be read, decoded or parsed |
 | `no-dashboard-read` | error | the dashboard directory could not be listed, or holds no export this tool can read |
 | `path-outside-root` | error | a dashboard export in the listing resolves outside the real root; nothing is read from it |
+| `path-unrenderable` | error | a directory entry's name carries a control, bidi or line-separator character, so no path in the map could name it; nothing is read from it |
 | `query-missing` | error | a tile names a query its dashboard does not declare |
 | `query-source-unresolved` | warning | a query declares a source it could not name, so the tile's lineage is not complete |
 | `rename-ambiguous` | error | a former id is claimed by two models, or is also a live id; references to it resolve neither way |
@@ -268,6 +269,17 @@ the **real** root before it is opened. A symbolic link planted among the exports
 is refused as `path-outside-root` and contributes no tile, no query and no model
 edge, because a map that named it by its in-root path would be claiming that
 evidence read from elsewhere came from this root.
+
+Every path and every declared format that reaches the report **or the written
+map** is rendered with the control, bidi and line-separator class removed, and a
+directory entry whose *name* carries one of those characters is refused as
+`path-unrenderable` rather than listed under a name that is not its name. The
+report is built through a sanitising constructor; the map is serialised with
+`JSON.stringify`, which escapes neither the C1 range nor U+2028/U+2029 nor any
+bidi control, so the map had to be asserted on its own emitted bytes. The
+finding names the code points it found, because two names that differ only in a
+stripped character render identically and "this is not what you see" tells the
+reader nothing they can act on.
 
 ## Non-goals
 
