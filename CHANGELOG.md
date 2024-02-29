@@ -35,6 +35,14 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Strict UTF-8 decoding is pinned by a test. `fatal: true` was the only thing
+  refusing an undecodable byte, and nothing drove it: substituting
+  `fatal: false` left the suite green while a dashboard export holding a lone
+  continuation byte became `status: "pass"`, exit 0, `source-map-complete`, with
+  its dashboard id silently rewritten around a replacement character. A
+  companion test pins the other side — a document that legally contains U+FFFD
+  is read, mapped and exits 0 — because that is the case a "look for U+FFFD in
+  the decoded text" guard gets wrong.
 - Control, bidi and line-separator characters no longer reach the written source
   map. The report on stdout was built through a sanitising constructor, but the
   map is serialised with `JSON.stringify`, which escapes neither the C1 range
