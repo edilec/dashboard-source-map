@@ -35,6 +35,13 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Every configuration-error test pins which refusal fired. The table asserted
+  only the shape — exit 2, empty stdout, a stderr prefix — so each of its eight
+  cases was satisfied by a different error: with the unknown-option guard
+  removed `--verbose` fell through to "needs a value", and with the numeric
+  guard removed `lots` fell through to "at least 1". Both were silent. A
+  one-character typo in a bound name (`--max-tile`) is now a case of its own,
+  because that is the failure the guard exists for.
 - Strict UTF-8 decoding is pinned by a test. `fatal: true` was the only thing
   refusing an undecodable byte, and nothing drove it: substituting
   `fatal: false` left the suite green while a dashboard export holding a lone

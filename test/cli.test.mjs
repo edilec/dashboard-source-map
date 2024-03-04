@@ -6,6 +6,14 @@
  * run had a subject and failed to obtain evidence about it, so stdout carries a
  * report with status "incomplete". A consumer piping stdout has to handle both,
  * which is why both are pinned here rather than described.
+ *
+ * EACH CASE PINS WHICH REFUSAL FIRED. Asserting only the shape -- exit 2, empty
+ * stdout, a stderr prefix -- let every one of these tests be satisfied by a
+ * different error: removing the unknown-option guard left `--verbose` falling
+ * through to "needs a value", and removing the numeric guard left `lots`
+ * falling through to "at least 1". Both were silent mutations, and the first is
+ * the one contract defect 6 exists for: a one-character typo in a bound must
+ * not turn a real failure into a green run.
  */
 
 import { join } from 'node:path'
@@ -15,24 +23,56 @@ import assert from 'node:assert/strict'
 import { map, runCli, temporary, tree } from './support.mjs'
 
 const USAGE = [
-  { label: 'no options at all', args: [] },
-  { label: 'a missing --root', args: ['--models', 'models.json'] },
-  { label: 'an unknown option', args: ['--root', '.', '--verbose'] },
-  { label: 'a repeated option', args: ['--root', '.', '--models', 'a.json', '--models', 'b.json'] },
-  { label: 'an option with no value', args: ['--root'] },
-  { label: 'a non-numeric bound', args: ['--root', '.', '--max-tiles', 'lots'] },
-  { label: 'a bound of zero', args: ['--root', '.', '--max-tiles', '0'] },
-  { label: 'a negative bound', args: ['--root', '.', '--max-tiles', '-4'] },
+  { label: 'no options at all', args: [], message: 'option "--root" is required' },
+  { label: 'a missing --root', args: ['--models', 'models.json'], message: 'option "--root" is required' },
+  { label: 'an unknown option', args: ['--root', '.', '--verbose'], message: 'unknown option "--verbose"' },
+  {
+    label: 'a one-character typo in a bound name',
+    args: ['--root', '.', '--max-tile', '4'],
+    message: 'unknown option "--max-tile"',
+  },
+  {
+    label: 'a repeated option',
+    args: ['--root', '.', '--models', 'a.json', '--models', 'b.json'],
+    message: 'option "--models" was given more than once',
+  },
+  { label: 'an option with no value', args: ['--root'], message: 'option "--root" needs a value' },
+  {
+    label: 'a non-numeric bound',
+    args: ['--root', '.', '--max-tiles', 'lots'],
+    message: 'option "--max-tiles" needs a whole number, not "lots"',
+  },
+  {
+    label: 'a bound of zero',
+    args: ['--root', '.', '--max-tiles', '0'],
+    message: 'option "--max-tiles" needs a whole number of at least 1',
+  },
+  {
+    label: 'a negative bound',
+    args: ['--root', '.', '--max-tiles', '-4'],
+    message: 'option "--max-tiles" needs a whole number, not "-4"',
+  },
 ]
 
-for (const { label, args } of USAGE) {
-  test(`${label} is a configuration error: exit 2 with EMPTY stdout`, () => {
+for (const { label, args, message } of USAGE) {
+  test(`${label} is a configuration error: exit 2, EMPTY stdout, and ${message}`, () => {
     const result = runCli(args)
     assert.equal(result.status, 2)
     assert.equal(result.stdout, '', 'a run that never had a subject reports nothing')
-    assert.match(result.stderr, /^dashboard-source-map: /)
+    assert.equal(result.stderr, `dashboard-source-map: ${message}\n`)
   })
 }
+
+test('an unknown option is refused before anything is read, not ignored', (t) => {
+  const directory = temporary(t)
+  tree(directory)
+  const accepted = runCli(['--root', directory, '--quiet'])
+  assert.equal(accepted.status, 0, 'the same tree without the typo is a clean run')
+  const typo = runCli(['--root', directory, '--quiet', '--max-tile', '1'])
+  assert.equal(typo.status, 2)
+  assert.equal(typo.stdout, '')
+  assert.equal(typo.stderr, 'dashboard-source-map: unknown option "--max-tile"\n')
+})
 
 test('an absolute --dashboards is a configuration error, not an unreadable input', () => {
   const result = runCli(['--root', '.', '--dashboards', '/etc'])
