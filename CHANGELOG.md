@@ -35,6 +35,14 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- The schema's uniqueness and required-key guards are pinned behaviourally.
+  Deleting the duplicate check in `uniqueIds`, the duplicate check in
+  `identifierList`, or the required-key loop in `checkKeys` left the whole suite
+  green, while two tiles sharing an id collapsed into one `usedByTiles` entry,
+  two queries sharing an id sent every tile behind the second one to the first
+  one's models, two models sharing an id resolved to whichever came later, and a
+  model claiming one former id twice was reported as `rename-ambiguous` between
+  a model and itself — a finding at error severity naming no second claimant.
 - Every configuration-error test pins which refusal fired. The table asserted
   only the shape — exit 2, empty stdout, a stderr prefix — so each of its eight
   cases was satisfied by a different error: with the unknown-option guard
