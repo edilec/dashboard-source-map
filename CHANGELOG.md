@@ -35,6 +35,15 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Five more ordering call sites are pinned behaviourally: the directory listing,
+  a query's model references, a model's former ids, the claimants named in an
+  ambiguity message, and the pointer key of the finding comparator. Giving any
+  of them an `Intl.Collator` changed real output with the suite green. The
+  message tiebreak in the comparator is pinned too, by a query declaring two
+  unresolved sources out of order. The one remaining site — the rule-id key — is
+  named as an equivalent mutant with the reason: no two ids in the frozen table
+  are ordered differently by code unit and by collation, and a test fails if one
+  ever is.
 - The schema's uniqueness and required-key guards are pinned behaviourally.
   Deleting the duplicate check in `uniqueIds`, the duplicate check in
   `identifierList`, or the required-key loop in `checkKeys` left the whole suite
