@@ -31,10 +31,23 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   README say so.
 - Declared bounds on document bytes, directory entries, dashboard files, tiles,
   queries, models, query references, upstream ids, previous ids, findings,
-  identifier length and text length, enforced before the work.
+  identifier length, text length and tile-to-model edges across the whole run,
+  enforced before the work.
 
 ### Fixed
 
+- A legal input no longer exhausts memory. Every declared bound bounded one
+  document, and their product — 200 files x 500 tiles x 100 references — is ten
+  million lineage edges, each of which becomes an object in the map and several
+  hundred bytes of the written document. A tree at exactly the documented
+  maximum produced `FATAL ERROR: Ineffective mark-compacts near heap limit`,
+  exit 134, empty stdout, 4.45 GB peak RSS and 460 s — the outcome the module
+  comment in `limits.mjs` claimed these bounds existed to prevent. The new
+  `maxTileModelEdges` (default 100000, `--max-tile-model-edges`) bounds the run
+  itself: it is checked against each dashboard before that dashboard's edges are
+  built, and stops with `edge-limit-reached` naming the exports that were not
+  mapped. The same tree now finishes in 8.3 s at 514 MB with a report saying
+  which 198 exports it did not read.
 - Five more ordering call sites are pinned behaviourally: the directory listing,
   a query's model references, a model's former ids, the claimants named in an
   ambiguity message, and the pointer key of the finding comparator. Giving any

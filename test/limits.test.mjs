@@ -237,10 +237,84 @@ test('maxFindings: exactly the limit is reported in full, one more says the repo
   )
 })
 
+/**
+ * The bound on the RUN rather than on one document.
+ *
+ * Every other limit in this file bounds a single file, and their product -- 200
+ * files x 500 tiles x 100 references -- is ten million lineage edges. A tree at
+ * the documented maximum killed the process: heap exhaustion, exit 134, empty
+ * stdout, 4.45 GB peak RSS, 460 s. So this one counts edges across the whole
+ * run, and it is checked against each dashboard BEFORE that dashboard's edges
+ * are built -- a count taken afterwards is the same crash, discovered one
+ * allocation too late.
+ */
+function edgeTree(files, tilesPerFile, references) {
+  const dashboards = {}
+  for (let file = 0; file < files; file += 1) {
+    dashboards[`d${file}.json`] = {
+      format: 'edilec.dashboard/v1',
+      dashboardId: `d-${file}`,
+      tiles: Array.from({ length: tilesPerFile }, (unused, index) => ({ id: `t-${index}`, queryId: 'q' })),
+      queries: [{ id: 'q', modelIds: Array.from({ length: references }, (unused, index) => `m-${index}`) }],
+    }
+  }
+  return {
+    dashboards,
+    models: modelExport(Array.from({ length: references }, (unused, index) => oneModel(`m-${index}`))),
+  }
+}
+
+test('maxTileModelEdges: exactly the limit is mapped, one edge more stops the run', (t) => {
+  const exact = temporary(t)
+  tree(exact, edgeTree(2, 3, 2))
+  const atLimit = map(exact, ['--max-tile-model-edges', '12'])
+  assert.equal(atLimit.status, 0, atLimit.stdout)
+  assert.ok(!ruleIds(atLimit.report).includes('edge-limit-reached'), 'a run sitting exactly on the limit is legal')
+  assert.equal(atLimit.report.summary.dashboards, 2)
+
+  const over = map(exact, ['--max-tile-model-edges', '11'])
+  assert.equal(over.status, 2)
+  assert.equal(over.report.status, 'incomplete')
+  const finding = over.report.findings.find((entry) => entry.ruleId === 'edge-limit-reached')
+  assert.equal(finding.location.file, 'dashboards')
+  assert.match(finding.message, /this map holds 6 tile-to-model edge\(s\) and "dashboards\/d1.json" declares 6 more/)
+  assert.match(finding.message, /over the run limit of 11/)
+  assert.match(finding.message, /1 dashboard export\(s\) were not mapped/)
+})
+
+test('the exports after the edge limit are named as unmapped, not silently dropped', (t) => {
+  const directory = temporary(t)
+  tree(directory, edgeTree(3, 2, 2))
+  const out = join(directory, 'map.json')
+  const result = map(directory, ['--max-tile-model-edges', '4', '--out', out])
+  assert.equal(result.status, 2)
+  const written = JSON.parse(readFileSync(out, 'utf8'))
+  assert.deepEqual(written.dashboards.map((entry) => entry.file), ['dashboards/d0.json'])
+  assert.deepEqual(written.unreadable, [
+    { file: 'dashboards/d1.json', reason: 'edge-limit-reached' },
+    { file: 'dashboards/d2.json', reason: 'edge-limit-reached' },
+  ])
+  // The bound stopped the work: no edge from the unmapped files is in the map.
+  assert.deepEqual(
+    written.models.map((model) => model.usedByTiles),
+    [['d-0/t-0', 'd-0/t-1'], ['d-0/t-0', 'd-0/t-1']],
+  )
+})
+
+test('a run with no model export builds no edges, so the edge limit does not refuse it', (t) => {
+  const directory = temporary(t)
+  tree(directory, { ...edgeTree(2, 3, 2), models: null })
+  const result = map(directory, ['--max-tile-model-edges', '1'])
+  assert.equal(result.status, 2, 'incomplete because the model export is missing')
+  assert.deepEqual(uniqueRuleIds(result.report), ['models-unreadable'])
+  assert.equal(result.report.summary.dashboards, 2, 'every dashboard is still mapped as far as it can be')
+})
+
 test('the documented defaults are the ones the tool actually uses', () => {
   assert.deepEqual(Object.keys(LIMITS).sort(), [
     'maxDashboardFiles', 'maxDirectoryEntries', 'maxDocumentBytes', 'maxFindings', 'maxIdentifierChars',
-    'maxModels', 'maxPreviousIds', 'maxQueries', 'maxQueryReferences', 'maxTextChars', 'maxTiles', 'maxUpstreamIds',
+    'maxModels', 'maxPreviousIds', 'maxQueries', 'maxQueryReferences', 'maxTextChars', 'maxTileModelEdges',
+    'maxTiles', 'maxUpstreamIds',
   ])
   const readme = readFileSync(join(import.meta.dirname, '..', 'README.md'), 'utf8')
   for (const [key, value] of Object.entries(LIMITS)) {

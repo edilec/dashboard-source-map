@@ -168,6 +168,7 @@ A dashboard directory holding no export this tool can read is reported as
 | `dashboard-format-unsupported` | error | a dashboard export declares a format this tool does not read; no lineage is read from it |
 | `dashboard-invalid` | error | a supported-format dashboard does not match the schema; no lineage is read from it |
 | `dashboard-unreadable` | error | a dashboard export could not be read, decoded or parsed |
+| `edge-limit-reached` | error | the run reached `maxTileModelEdges`; the dashboards after that point were not mapped |
 | `finding-limit-reached` | warning | more findings were observed than `maxFindings` allows to be reported |
 | `freshness-evidence-absent` | warning | a model a tile reads declares no freshness evidence; the map records unknown |
 | `model-missing` | error | a query reads an id no model declares and no model claims as a former id |
@@ -215,6 +216,18 @@ are read, and every count is checked against the parsed document before the map
 is built. Exceeding one is an `incomplete` result naming the limit, never a
 silent truncation and never a pass.
 
+**A bound on each part is not a bound on the whole.** Every limit below except
+`maxTileModelEdges` bounds one document, and their product — 200 files x 500
+tiles x 100 references — is ten million lineage edges. A tree at that size made
+this tool die of heap exhaustion: `FATAL ERROR: Ineffective mark-compacts near
+heap limit`, exit 134, empty stdout, 4.45 GB peak RSS, 460 s. So the run itself
+is bounded: `maxTileModelEdges` counts every tile-to-model edge the map will
+hold, is checked against each dashboard *before* its edges are built, and stops
+the run with `edge-limit-reached` naming the exports that were not mapped. On
+the reference machine an edge costs about 500 bytes of written map and about
+2.5 KB of peak process memory, both linear in the count, so raising the flag
+raises both — deliberately, by someone who knows the machine.
+
 | Limit | Default | Flag |
 | --- | ---: | --- |
 | `maxDocumentBytes` | 1048576 | `--max-document-bytes` |
@@ -226,6 +239,7 @@ silent truncation and never a pass.
 | `maxQueryReferences` | 100 | `--max-query-references` |
 | `maxUpstreamIds` | 100 | `--max-upstream-ids` |
 | `maxPreviousIds` | 20 | `--max-previous-ids` |
+| `maxTileModelEdges` | 100000 | `--max-tile-model-edges` |
 | `maxFindings` | 500 | `--max-findings` |
 | `maxIdentifierChars` | 200 | (not overridable) |
 | `maxTextChars` | 300 | (not overridable) |

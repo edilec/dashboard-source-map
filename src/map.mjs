@@ -124,6 +124,23 @@ function reportQuerySources({ query, tile, report, file, unresolved }) {
   }
 }
 
+/**
+ * How many lineage edges this dashboard would add to the map.
+ *
+ * An upper bound, computed from the compiled document before a single edge is
+ * built: a reference that turns out to be missing or ambiguous produces no
+ * edge, so the real count can only be smaller. It is the count BEFORE the work
+ * that has to be checked -- counting afterwards is the heap exhaustion this
+ * bound exists to prevent, discovered one allocation too late.
+ */
+function edgesIn(dashboard) {
+  const references = new Map()
+  for (const query of dashboard.queries) references.set(query.id, query.modelIds.length)
+  let edges = 0
+  for (const tile of dashboard.tiles) edges += references.get(tile.queryId) ?? 0
+  return edges
+}
+
 function mapTile({ tile, queries, models, report, file, dashboardId, usage }) {
   const unresolved = []
   const resolvedModels = []
@@ -284,7 +301,9 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
     })
   }
 
-  for (const candidate of listing.files) {
+  let edgeCount = 0
+  for (let position = 0; position < listing.files.length; position += 1) {
+    const candidate = listing.files[position]
     const document = await readJsonDocument(candidate.absolute, limits)
     if (!document.ok) {
       unreadable.push({ file: candidate.file, reason: 'unreadable' })
@@ -352,6 +371,29 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
       })
       continue
     }
+    // Every other bound in this tool bounds ONE document. Their product --
+    // 200 files x 500 tiles x 100 references -- is ten million edges, which is
+    // how a run at the documented maximum died of heap exhaustion at exit 134
+    // with empty stdout. A reference resolved while the model export is
+    // unavailable produces no edge and costs nothing, so nothing is counted
+    // for it.
+    const edges = models.available ? edgesIn(dashboard) : 0
+    if (edgeCount + edges > limits.maxTileModelEdges) {
+      const remaining = listing.files.slice(position)
+      for (const unmapped of remaining) unreadable.push({ file: unmapped.file, reason: 'edge-limit-reached' })
+      report.add('edge-limit-reached', {
+        file: dashboardsDirectory,
+        message:
+          `this map holds ${edgeCount} tile-to-model edge(s) and "${candidate.file}" declares ${edges} more, `
+          + `over the run limit of ${limits.maxTileModelEdges}; ${remaining.length} dashboard export(s) were not `
+          + 'mapped, so this map does not describe the whole root',
+        suggestion:
+          'raise --max-tile-model-edges if this machine has the memory for it (about 500 bytes of map and 2.5 KB '
+          + 'of peak memory per edge), or map fewer dashboards in one run',
+      })
+      break
+    }
+    edgeCount += edges
     declaredBy.set(dashboard.dashboardId, candidate.file)
     const tiles = []
     for (const tile of [...dashboard.tiles].sort((left, right) => byCodeUnit(left.id, right.id))) {

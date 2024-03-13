@@ -65,6 +65,24 @@ same class of wrong-but-plausible edge as reading an unsupported export. Where a
 query genuinely cannot name a source, the export says so in `unresolvedSources`
 and the tool reports that, which is the honest form of the same information.
 
+## Why the run is bounded and not only the documents
+
+Every other limit this tool declares bounds one document: bytes, tiles,
+queries, references per query. Their *product* is not bounded by any of them —
+200 files x 500 tiles x 100 references is ten million lineage edges — and the
+map is held in full before it is serialised, so ten million edges is a process
+that dies rather than a report that says no. Measured before the fix, at exactly
+the documented maximum: `FATAL ERROR: Ineffective mark-compacts near heap
+limit`, exit 134, empty stdout, 4.45 GB peak RSS, 460 s. The module comment in
+`limits.mjs` had described that outcome as the thing these bounds prevent.
+
+`maxTileModelEdges` bounds the work. It is counted from the compiled document
+*before* any of that document's edges are built, because a count taken
+afterwards is the same crash one allocation later, and the run stops with
+`edge-limit-reached` naming every export that was not mapped. The same tree now
+finishes in 8 s at 514 MB, exit 2, with a report that says which 198 exports it
+did not read.
+
 ## Why `--out` is not confined
 
 A confinement root for the output would mean writing the map inside the export

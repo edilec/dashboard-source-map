@@ -147,10 +147,22 @@ test('path-unrenderable', (t) => {
   assertIncomplete(map(directory), 'path-unrenderable', { errorsExpected: true })
 })
 
+test('edge-limit-reached', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'a.json': dashboard({ dashboardId: 'a' }),
+      'b.json': dashboard({ dashboardId: 'b' }),
+    },
+  })
+  assertIncomplete(map(directory, ['--max-tile-model-edges', '2']), 'edge-limit-reached', { errorsExpected: true })
+})
+
 test('every rule in INCOMPLETE_RULES has a scenario above', () => {
   assert.deepEqual([...INCOMPLETE_RULES].sort(), [
     'dashboard-format-undeclared', 'dashboard-format-unsupported', 'dashboard-id-duplicated', 'dashboard-invalid',
-    'dashboard-unreadable', 'finding-limit-reached', 'models-invalid', 'models-unreadable', 'no-dashboard-read',
+    'dashboard-unreadable', 'edge-limit-reached', 'finding-limit-reached', 'models-invalid', 'models-unreadable',
+    'no-dashboard-read',
     'path-outside-root', 'path-unrenderable', 'query-source-unresolved', 'rename-ambiguous',
   ])
 })

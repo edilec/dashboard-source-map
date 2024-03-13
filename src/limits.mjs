@@ -8,6 +8,15 @@
  * read, and every count is checked against the parsed document before the map
  * is built.
  *
+ * THIS TOOL SHIPPED THAT EXACT FAILURE ANYWAY, because every bound here was a
+ * bound on one document and none was a bound on the run. The product of the
+ * per-document bounds -- 200 files x 500 tiles x 100 model references -- is ten
+ * million lineage edges, and each edge becomes an object in the map and several
+ * hundred bytes of the written document. Measured at the documented maximum on
+ * a 128 GB machine: `FATAL ERROR: Ineffective mark-compacts near heap limit`,
+ * exit 134, empty stdout, 4.45 GB peak RSS, 460 s. A bound on each part is not
+ * a bound on the whole, so `maxTileModelEdges` bounds the whole.
+ *
  * Every bound here is tested from BOTH sides: that it refuses at N+1 and that
  * it stays silent at exactly N.
  */
@@ -34,6 +43,16 @@ export const LIMITS = Object.freeze({
   maxIdentifierChars: 200,
   /** Characters of free text: a title, a description, a reason, a freshness label. */
   maxTextChars: 300,
+  /**
+   * Tile-to-model lineage edges built across the WHOLE run.
+   *
+   * This is the bound on the work, and it is the one that decides how much
+   * memory a legal run may use, because the map is held in full before it is
+   * serialised. Measured on the reference machine: about 500 bytes of written
+   * map and about 2.5 KB of peak process memory per edge, both linear. 100000
+   * edges is roughly 50 MB of map and 350 MB of peak RSS.
+   */
+  maxTileModelEdges: 100000,
   /** Findings emitted before the report says it stopped counting. */
   maxFindings: 500,
 })
@@ -49,5 +68,6 @@ export const OVERRIDABLE = Object.freeze({
   '--max-query-references': 'maxQueryReferences',
   '--max-upstream-ids': 'maxUpstreamIds',
   '--max-previous-ids': 'maxPreviousIds',
+  '--max-tile-model-edges': 'maxTileModelEdges',
   '--max-findings': 'maxFindings',
 })

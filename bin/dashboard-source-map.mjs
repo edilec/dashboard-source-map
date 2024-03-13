@@ -97,6 +97,11 @@ Options:
   --max-query-references N    Model references on one query (default ${LIMITS.maxQueryReferences}).
   --max-upstream-ids N        Upstream ids on one model (default ${LIMITS.maxUpstreamIds}).
   --max-previous-ids N        Former ids on one model (default ${LIMITS.maxPreviousIds}).
+  --max-tile-model-edges N    Tile-to-model edges in one run (default ${LIMITS.maxTileModelEdges}).
+                              This is the bound on the WORK: the per-document
+                              limits above bound one file each, and their
+                              product is ten million edges. About 500 bytes of
+                              map and 2.5 KB of memory per edge.
   --max-findings N            Findings per report (default ${LIMITS.maxFindings}).
 
 Exit codes:
