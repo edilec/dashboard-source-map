@@ -268,7 +268,12 @@ that differs between Node builds, which would let two correct machines disagree.
   `ino` is the only thing that sees it;
 - the destination directory must already exist; this tool never creates one.
 
-A refused destination is a configuration error: exit `2` with empty stdout.
+A refused destination is a configuration error: exit `2` with empty stdout. So
+is a destination that cannot be written (`--out could not be written (EACCES)`)
+and a map that cannot be serialised — those are two different failures and they
+say so: serialising the map and writing it sat inside one `try`, so a map larger
+than a single JavaScript string, reachable by raising `--max-tile-model-edges`,
+was reported as `could not be written (unknown error)`.
 
 `--out` is **not confined to `--root`.** It is an ordinary path, and a
 symbolically linked parent directory is followed, exactly as it is for `cp` and

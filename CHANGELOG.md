@@ -36,6 +36,14 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Serialising the map and writing it are reported separately. Both calls sat
+  inside one `try`, so a map too large for a single JavaScript string — which a
+  caller reaches by raising `--max-tile-model-edges` — came out as `--out could
+  not be written (unknown error)`: the wrong act, and nothing the reader can do
+  about it. The size case now names itself and names the limit to lower. The
+  write failure itself is now driven end to end through the real CLI, which no
+  test had done: exit 2, empty stdout, `(EACCES)`, no stack trace and no
+  absolute host path.
 - A legal input no longer exhausts memory. Every declared bound bounded one
   document, and their product — 200 files x 500 tiles x 100 references — is ten
   million lineage edges, each of which becomes an object in the map and several

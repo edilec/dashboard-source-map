@@ -11,7 +11,7 @@
 export const TOOL_ID = 'dashboard-source-map'
 
 export { LIMITS, OVERRIDABLE } from './limits.mjs'
-export { MAX_DEPTH, canonicalDocument, canonicalJson } from './canonical.mjs'
+export { MAX_DEPTH, canonicalDocument, canonicalFailureDetail, canonicalJson } from './canonical.mjs'
 export { listDashboardDirectory, readJsonDocument, resolveInside, resolveRoot } from './documents.mjs'
 export { LINEAGE, buildSourceMap } from './map.mjs'
 export { buildModelIndex, resolveModel } from './models.mjs'

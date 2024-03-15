@@ -25,6 +25,7 @@ import {
   assertWritableDestination,
   buildSourceMap,
   canonicalDocument,
+  canonicalFailureDetail,
   controlCodePoints,
   exitCodeFor,
   formatReport,
@@ -195,8 +196,19 @@ async function main() {
       root: null,
       label: '--out',
     })
+    // Serialising and writing fail for unrelated reasons and are reported
+    // separately. Both were inside one try, so a map too large for a single
+    // JavaScript string -- reachable by raising --max-tile-model-edges -- came
+    // out as `--out could not be written (unknown error)`, which names the
+    // wrong act and offers the reader nothing to do about it.
+    let document
     try {
-      await writeFile(target, canonicalDocument(result.map), 'utf8')
+      document = canonicalDocument(result.map)
+    } catch (error) {
+      throw new ConfigError(`--out could not be serialised (${canonicalFailureDetail(error)})`)
+    }
+    try {
+      await writeFile(target, document, 'utf8')
     } catch (error) {
       throw new ConfigError(`--out could not be written (${error.code ?? 'unknown error'})`)
     }

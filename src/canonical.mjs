@@ -7,7 +7,7 @@
  * if an unchanged export produces an unchanged file.
  */
 
-import { byCodeUnit } from './text.mjs'
+import { EXCERPT_LIMIT, byCodeUnit, sanitise } from './text.mjs'
 
 /** Deeper than any source map this tool builds; a guard against a cyclic value. */
 export const MAX_DEPTH = 16
@@ -49,4 +49,26 @@ export function canonicalJson(value) {
 /** The same ordering, indented, with a trailing newline. This is what gets written. */
 export function canonicalDocument(value) {
   return `${encode(value, 2, 0, '')}\n`
+}
+
+/**
+ * Why a value could not be serialised, in words a caller can act on.
+ *
+ * Serialising and writing are separate acts that fail for unrelated reasons,
+ * and they were reported as one: a map too large for a single JavaScript string
+ * came out of the CLI as `--out could not be written (unknown error)`, which
+ * names the wrong act and leaves the reader with nothing to do. The only
+ * reachable cause of that RangeError here is size, and the only way to reach it
+ * is to raise the edge limit, so the flag is named.
+ *
+ * `error.message` is read with a type check rather than `String(error.message)`,
+ * which throws for an object whose `toString` is not callable -- a diagnostic
+ * path that throws is how a bad value becomes a stack trace.
+ */
+export function canonicalFailureDetail(error) {
+  if (error instanceof RangeError) {
+    return 'the map is larger than one JavaScript string can hold; lower --max-tile-model-edges and run again'
+  }
+  const message = typeof error?.message === 'string' ? error.message : 'unknown error'
+  return sanitise(message).slice(0, EXCERPT_LIMIT)
 }
