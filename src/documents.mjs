@@ -45,6 +45,13 @@ export async function readJsonDocument(absolutePath, limits = LIMITS) {
   } finally {
     await handle?.close()
   }
+  // Deliberately redundant with the `stat` check above, and the redundancy is
+  // why neither can be pinned on its own: for a regular file read in full the
+  // two produce the identical sentence, so removing either one is an equivalent
+  // mutant and removing both is caught. The first bounds the WORK -- it is what
+  // stops a gigabyte being read into memory -- and the second bounds the
+  // ANSWER, for a file that grew between the two calls. Memory is not visible
+  // in the output, so no test here can distinguish them.
   if (bytes.byteLength > limits.maxDocumentBytes) {
     return { ok: false, detail: `is ${bytes.byteLength} bytes, over the document limit of ${limits.maxDocumentBytes}` }
   }

@@ -39,15 +39,33 @@ function tiles(count) {
 test('maxDocumentBytes: a document of exactly the limit is read, one byte over is refused', (t) => {
   const directory = temporary(t)
   tree(directory, { dashboards: { 'revenue.json': dashboard() }, models: modelExport() })
-  const size = statSync(join(directory, 'dashboards/revenue.json')).size
+  const dashboardBytes = statSync(join(directory, 'dashboards/revenue.json')).size
+  const modelBytes = statSync(join(directory, 'models.json')).size
+  assert.ok(dashboardBytes > modelBytes, 'this test needs the two documents to differ in size')
 
-  const exact = map(directory, ['--max-document-bytes', String(size)])
+  const exact = map(directory, ['--max-document-bytes', String(dashboardBytes)])
   assert.equal(exact.status, 0, 'a document sitting exactly on the limit is legal')
 
-  const over = map(directory, ['--max-document-bytes', String(size - 1)])
-  assert.equal(over.status, 2)
-  assert.ok(ruleIds(over.report).includes('models-unreadable') || ruleIds(over.report).includes('dashboard-unreadable'))
-  assert.match(JSON.stringify(over.report.findings), new RegExp(`over the document limit of ${size - 1}`))
+  // Named per file, not "one of the two". An OR over both rules is satisfied
+  // by either document, so it survives a bound that refuses the wrong one.
+  const overDashboard = map(directory, ['--max-document-bytes', String(dashboardBytes - 1)])
+  assert.equal(overDashboard.status, 2)
+  const refused = overDashboard.report.findings.find((finding) => finding.ruleId === 'dashboard-unreadable')
+  assert.equal(refused.location.file, 'dashboards/revenue.json')
+  assert.equal(
+    refused.message,
+    `this dashboard export is ${dashboardBytes} bytes, over the document limit of ${dashboardBytes - 1}`,
+  )
+  assert.ok(!ruleIds(overDashboard.report).includes('models-unreadable'), 'the model export is under the limit')
+
+  const overModels = map(directory, ['--max-document-bytes', String(modelBytes - 1)])
+  assert.equal(overModels.status, 2)
+  const refusedModels = overModels.report.findings.find((finding) => finding.ruleId === 'models-unreadable')
+  assert.equal(refusedModels.location.file, 'models.json')
+  assert.equal(
+    refusedModels.message,
+    `the model export is ${modelBytes} bytes, over the document limit of ${modelBytes - 1}`,
+  )
 })
 
 test('maxDirectoryEntries: exactly the limit is listed, one more is refused', (t) => {
