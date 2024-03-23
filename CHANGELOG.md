@@ -36,6 +36,11 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- `summary.checked` counts the dashboard exports the run opened, not the ones
+  the listing offered. With the new edge limit the difference became visible and
+  dishonest: a run that stopped after two files reported `checked: 200` beside
+  `dashboards: 2`. What every summary field counts is now written down in the
+  README, which had documented none of them.
 - Serialising the map and writing it are reported separately. Both calls sat
   inside one `try`, so a map too large for a single JavaScript string — which a
   caller reaches by raising `--max-tile-model-edges` — came out as `--out could

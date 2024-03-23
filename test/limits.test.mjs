@@ -312,6 +312,10 @@ test('the exports after the edge limit are named as unmapped, not silently dropp
     { file: 'dashboards/d1.json', reason: 'edge-limit-reached' },
     { file: 'dashboards/d2.json', reason: 'edge-limit-reached' },
   ])
+  // `checked` counts what the run opened, not what the listing offered: the
+  // second file was read and then refused, and the third was never opened.
+  assert.equal(result.report.summary.checked, 2)
+  assert.equal(result.report.summary.dashboards, 1)
   // The bound stopped the work: no edge from the unmapped files is in the map.
   assert.deepEqual(
     written.models.map((model) => model.usedByTiles),

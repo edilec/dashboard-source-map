@@ -302,8 +302,15 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   }
 
   let edgeCount = 0
+  let readCount = 0
   for (let position = 0; position < listing.files.length; position += 1) {
     const candidate = listing.files[position]
+    // `checked` counts the files this run actually opened. It used to be the
+    // length of the listing, which is a different claim: after the edge limit
+    // stops the run, 198 of the 200 files it reports were never read, and a
+    // consumer reading `checked: 200` beside `dashboards: 2` is being told
+    // something the run did not do.
+    readCount += 1
     const document = await readJsonDocument(candidate.absolute, limits)
     if (!document.ok) {
       unreadable.push({ file: candidate.file, reason: 'unreadable' })
@@ -476,7 +483,7 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
   }
 
   const counts = {
-    checked: listing.files.length,
+    checked: readCount,
     dashboards: dashboards.length,
     tiles: tileCount,
     broken: brokenCount,

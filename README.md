@@ -158,6 +158,26 @@ Non-goals.
 A dashboard directory holding no export this tool can read is reported as
 `no-dashboard-read` and exits `2`, rather than passing on zero evidence.
 
+## What the summary counts
+
+```json
+{ "checked": 3, "dashboards": 2, "tiles": 7, "broken": 1, "unresolvedTiles": 0, "errors": 1, "warnings": 0 }
+```
+
+| Field | Counts |
+| --- | --- |
+| `checked` | dashboard export files this run **opened** — not the ones the listing offered |
+| `dashboards` | exports that were read, recognised, valid, and mapped |
+| `tiles` | tiles in those dashboards |
+| `broken` | tiles whose lineage is `broken`: a query or a model that nothing provides |
+| `unresolvedTiles` | tiles whose lineage is `unresolved`: something could not be established |
+| `errors`, `warnings` | findings at those severities |
+
+`checked` and `dashboards` differ whenever a file was opened and then not mapped
+— an unsupported format, an invalid document, a duplicate dashboard id — and
+`checked` is smaller than the listing whenever the run stopped early, which
+`edge-limit-reached` says explicitly.
+
 ## Rules
 
 | ruleId | severity | raised when |
