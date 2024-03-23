@@ -79,9 +79,17 @@ limit`, exit 134, empty stdout, 4.45 GB peak RSS, 460 s. The module comment in
 `maxTileModelEdges` bounds the work. It is counted from the compiled document
 *before* any of that document's edges are built, because a count taken
 afterwards is the same crash one allocation later, and the run stops with
-`edge-limit-reached` naming every export that was not mapped. The same tree now
-finishes in 8 s at 514 MB, exit 2, with a report that says which 198 exports it
-did not read.
+`edge-limit-reached` naming every export that was not mapped. The ten-million
+edge tree now finishes in 8.3 s at 514 MB, exit 2, with a report saying which
+198 exports it did not read; a tree at the new documented maximum — 100000
+edges with every identifier and title at its limit — exits 0 in 5.4 s at
+1.21 GB, writing a 189 MB map.
+
+The default is a judgement, not a measurement: 100000 edges is far more than a
+real BI estate reaches (200 dashboards of 50 tiles reading 5 models each is
+50000) and it is what one machine can hold without thinking about it. A caller
+who knows their machine raises the flag; the failure it prevents is the one
+where nobody was asked.
 
 ## Why `--out` is not confined
 

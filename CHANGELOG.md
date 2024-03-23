@@ -55,7 +55,11 @@ Renaming a `ruleId` is a breaking change and is recorded here.
   itself: it is checked against each dashboard before that dashboard's edges are
   built, and stops with `edge-limit-reached` naming the exports that were not
   mapped. The same tree now finishes in 8.3 s at 514 MB with a report saying
-  which 198 exports it did not read.
+  which 198 exports it did not read, and a tree at the new documented maximum —
+  200 exports of 668 KB, 100000 tiles, 100000 edges, 5000 models, every
+  identifier and title at its own limit — exits 0 in 5.4 s at 1.21 GB peak RSS,
+  writing a 189 MB map. Those measured figures are what the README, the help
+  text and the limit's own comment now quote.
 - Five more ordering call sites are pinned behaviourally: the directory listing,
   a query's model references, a model's former ids, the claimants named in an
   ambiguity message, and the pointer key of the finding comparator. Giving any

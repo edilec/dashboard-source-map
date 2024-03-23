@@ -101,8 +101,10 @@ Options:
   --max-tile-model-edges N    Tile-to-model edges in one run (default ${LIMITS.maxTileModelEdges}).
                               This is the bound on the WORK: the per-document
                               limits above bound one file each, and their
-                              product is ten million edges. About 500 bytes of
-                              map and 2.5 KB of memory per edge.
+                              product is ten million edges. At this default,
+                              with every identifier and title at its limit, one
+                              run measured 5.4 s, 1.21 GB peak RSS and a 189 MB
+                              map.
   --max-findings N            Findings per report (default ${LIMITS.maxFindings}).
 
 Exit codes:

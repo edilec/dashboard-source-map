@@ -388,8 +388,8 @@ export async function buildSourceMap({ realRoot, dashboardsDirectory, modelsFile
           + `over the run limit of ${limits.maxTileModelEdges}; ${remaining.length} dashboard export(s) were not `
           + 'mapped, so this map does not describe the whole root',
         suggestion:
-          'raise --max-tile-model-edges if this machine has the memory for it (about 500 bytes of map and 2.5 KB '
-          + 'of peak memory per edge), or map fewer dashboards in one run',
+          'raise --max-tile-model-edges if this machine has the memory for it (the default cost up to 1.21 GB of '
+          + 'peak memory and a 189 MB map when measured), or map fewer dashboards in one run',
       })
       break
     }

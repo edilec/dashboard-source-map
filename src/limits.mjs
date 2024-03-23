@@ -48,9 +48,12 @@ export const LIMITS = Object.freeze({
    *
    * This is the bound on the work, and it is the one that decides how much
    * memory a legal run may use, because the map is held in full before it is
-   * serialised. Measured on the reference machine: about 500 bytes of written
-   * map and about 2.5 KB of peak process memory per edge, both linear. 100000
-   * edges is roughly 50 MB of map and 350 MB of peak RSS.
+   * serialised. Measured at the documented maximum on the reference machine --
+   * 200 exports of 668 KB, 100000 tiles, 100000 edges, 5000 models, every
+   * identifier and title at its own limit -- exit 0 in 5.4 s at 1.21 GB peak
+   * RSS, writing a 189 MB map. The same edge count with short identifiers cost
+   * 514 MB and 48.7 MB of map, so what an edge costs depends on the length of
+   * the strings around it.
    */
   maxTileModelEdges: 100000,
   /** Findings emitted before the report says it stopped counting. */

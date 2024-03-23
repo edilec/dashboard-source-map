@@ -223,10 +223,17 @@ this tool die of heap exhaustion: `FATAL ERROR: Ineffective mark-compacts near
 heap limit`, exit 134, empty stdout, 4.45 GB peak RSS, 460 s. So the run itself
 is bounded: `maxTileModelEdges` counts every tile-to-model edge the map will
 hold, is checked against each dashboard *before* its edges are built, and stops
-the run with `edge-limit-reached` naming the exports that were not mapped. On
-the reference machine an edge costs about 500 bytes of written map and about
-2.5 KB of peak process memory, both linear in the count, so raising the flag
-raises both — deliberately, by someone who knows the machine.
+the run with `edge-limit-reached` naming the exports that were not mapped.
+
+**Measured at the documented maximum** — 200 exports of 668 KB each (134 MB of
+input), 100000 tiles, 100000 edges, 5000 models, every identifier at 200
+characters and every title at 300 — one run on the reference machine (Node 24,
+macOS, 128 GB, a 4.49 GB V8 heap limit): exit `0`, **5.4 s**, **1.21 GB peak
+RSS**, a **189 MB** map. The same edge count with short identifiers measured
+8.3 s, 514 MB and a 48.7 MB map, so the cost of an edge is dominated by the
+length of the identifiers and titles around it, not by the edge itself. Raising
+`--max-tile-model-edges` raises all three figures — deliberately, by somebody
+who knows the machine.
 
 | Limit | Default | Flag |
 | --- | ---: | --- |
