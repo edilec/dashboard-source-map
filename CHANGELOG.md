@@ -36,6 +36,15 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Two guards against untrusted text in the report are pinned by inputs that
+  reach them. The test named for the parse-failure backstop passed without it —
+  its invented wording matched no branch, so the generic fallback answered and
+  the backstop was never consulted; a message that reaches the position branch
+  *and* still carries a quoted span now drives it. And V8 quotes the offending
+  character of a document verbatim, so an export beginning with U+202E put a
+  right-to-left override into the finding message: `ReportBuilder.add`
+  sanitising the message is the only thing that strips it, and removing that one
+  call was silent.
 - `summary.checked` counts the dashboard exports the run opened, not the ones
   the listing offered. With the new edge limit the difference became visible and
   dishonest: a run that stopped after two files reported `checked: 200` beside

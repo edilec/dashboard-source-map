@@ -111,3 +111,55 @@ test('the CLI reports an unparseable model export without echoing it', (t) => {
   assert.match(finding.message, /at the start of the document/)
   assert.ok(!finding.message.includes('at position 1'))
 })
+
+/**
+ * THE BACKSTOP, PINNED BY A MESSAGE THAT REACHES IT.
+ *
+ * The test above named for the backstop passes without it: the wording it
+ * invents matches none of the branches, so `describeParseFailure` returns the
+ * generic sentence on its own and the backstop is never consulted. Deleting
+ * `detail.includes('"') ? UNPARSEABLE : detail` left the whole suite green --
+ * an absence assertion satisfied by a path it was not written to check.
+ *
+ * A message must reach the POSITION branch AND still carry a quote for the
+ * backstop to be the thing that catches it.
+ */
+test('the backstop catches a leak the POSITION branch would otherwise let through', () => {
+  const leaking = { message: 'Unexpected wording about "an-internal-secret-4444" in JSON at position 12' }
+  const detail = parseFailureDetail(leaking)
+  assert.equal(detail, UNPARSEABLE)
+  assert.ok(!detail.includes('4444'), 'the quoted span reached the position branch and was refused after it')
+  // Without the backstop this is what the branch above returns.
+  assert.match(leaking.message, /at position 12$/, 'the position branch matches, so it is not the fallback answering')
+})
+
+/**
+ * V8 QUOTES THE OFFENDING CHARACTER, WHATEVER IT IS.
+ *
+ * `Unexpected token '<char>', "..." is not valid JSON` carries the raw first
+ * character of the document, so a dashboard export beginning with U+202E puts
+ * a right-to-left override into the detail, into the finding message, and into
+ * the human summary. The detail is built from the document; `ReportBuilder.add`
+ * sanitising the message is the only thing that strips it, and removing that
+ * one call was a silent mutation until this test.
+ */
+for (const code of [0x01, 0x85, 0x202e, 0x2028]) {
+  const point = `U+${code.toString(16).toUpperCase().padStart(4, '0')}`
+  test(`a document beginning with ${point} does not put it in the report`, (t) => {
+    const character = String.fromCharCode(code)
+    assert.ok(
+      failureFor(`${character}nonsense`).detail.includes(character),
+      'the helper passes the character through: V8 quotes it as the offending token, so it is document text',
+    )
+    const directory = temporary(t)
+    tree(directory)
+    write(directory, 'dashboards/broken.json', `${character}nonsense`)
+    const result = map(directory)
+    assert.equal(result.status, 2)
+    const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-unreadable')
+    assert.match(finding.message, /this dashboard export unexpected token/)
+    assert.ok(!finding.message.includes(character), 'the report is sanitised on the way out')
+    assert.ok(!result.stdout.includes(character), 'and nothing reaches stdout')
+    assert.ok(!result.stderr.includes(character), 'and nothing reaches the human summary')
+  })
+}
