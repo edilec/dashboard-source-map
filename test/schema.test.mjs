@@ -194,3 +194,83 @@ test('ids that are unique stay silent: one id may be a tile, a query and a model
   assert.equal(result.status, 0, result.stdout)
   assert.deepEqual(ruleIds(result.report), ['source-map-complete'])
 })
+
+/**
+ * A REFUSAL THAT RECORDS NO PROBLEM IS NOT A REFUSAL.
+ *
+ * `checkKeys` and `cleanString` both do two things: they record a problem and
+ * they return a value that says "unusable". Deleting the recording left the
+ * suite green, and it is the recording that decides: `compileDashboard` returns
+ * `ok` when the problem list is empty, so a document with a tile that is not an
+ * object, or an id that is the empty string, compiled -- into a dashboard with
+ * `"id": null` in the map, at exit 0.
+ */
+
+test('a tile that is not an object is refused, not compiled into a null-id tile', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'revenue.json': dashboard(),
+      'bad.json': {
+        format: 'edilec.dashboard/v1',
+        dashboardId: 'bad',
+        tiles: [42],
+        queries: [{ id: 'q', modelIds: ['finance.arr_monthly'] }],
+      },
+    },
+  })
+  const out = join(directory, 'map.json')
+  const result = map(directory, ['--out', out])
+  assert.equal(result.status, 2)
+  assert.deepEqual(problems(result.report, 'dashboard-invalid'), [
+    { pointer: '/tiles/0', message: '/tiles/0 must be an object, not number' },
+  ])
+  const written = JSON.parse(readFileSync(out, 'utf8'))
+  assert.deepEqual(written.dashboards.map((entry) => entry.dashboardId), ['revenue-weekly'])
+  assert.ok(!readFileSync(out, 'utf8').includes('"id": null'), 'no tile in the map has a null id')
+})
+
+test('an identifier that is the empty string is refused, not carried into the map as null', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'revenue.json': dashboard(),
+      'bad.json': { ...dashboard({ dashboardId: '' }) },
+    },
+  })
+  const out = join(directory, 'map.json')
+  const result = map(directory, ['--out', out])
+  assert.equal(result.status, 2)
+  assert.deepEqual(problems(result.report, 'dashboard-invalid'), [
+    { pointer: '/dashboardId', message: '/dashboardId must not be empty' },
+  ])
+  const written = JSON.parse(readFileSync(out, 'utf8'))
+  assert.deepEqual(written.dashboards.map((entry) => entry.dashboardId), ['revenue-weekly'])
+  assert.ok(!readFileSync(out, 'utf8').includes('"dashboardId": null'))
+})
+
+test('a format that is the empty string declares no format, rather than an unsupported one', (t) => {
+  const directory = temporary(t)
+  tree(directory, { dashboards: { 'bad.json': { ...dashboard(), format: '' } } })
+  const result = map(directory)
+  assert.equal(result.status, 2)
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-format-undeclared')
+  assert.equal(finding.location.pointer, '/format')
+  assert.match(finding.message, /declares no format/)
+  assert.ok(
+    !ruleIds(result.report).includes('dashboard-format-unsupported'),
+    'an empty string is not a format this tool could name back to the reader',
+  )
+})
+
+test('an unsupported format longer than the excerpt bound is cut, not echoed whole', (t) => {
+  const directory = temporary(t)
+  const long = `looker.${'x'.repeat(200)}`
+  tree(directory, { dashboards: { 'bad.json': { ...dashboard(), format: long } } })
+  const result = map(directory)
+  assert.equal(result.status, 2)
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-format-unsupported')
+  assert.match(finding.message, new RegExp(`"${long.slice(0, 80)}\\.\\.\\."`))
+  assert.ok(!finding.message.includes(long), 'the whole declared format is not reproduced')
+  assert.ok(!result.stdout.includes(long))
+})

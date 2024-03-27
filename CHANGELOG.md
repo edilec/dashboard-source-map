@@ -36,6 +36,14 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- A schema refusal that records no problem is now pinned as a refusal.
+  `compileDashboard` returns `ok` when the problem list is empty, so deleting
+  the `problems.add` inside `checkKeys` or `cleanString` — both silent — made a
+  tile that is not an object, or an id that is the empty string, compile into a
+  dashboard with `"id": null` in the written map at exit 0. An empty `format`
+  string and an over-long unsupported format are pinned too: the first declares
+  no format rather than an unsupported one, and the second is cut at the excerpt
+  bound rather than echoed whole.
 - Two guards against untrusted text in the report are pinned by inputs that
   reach them. The test named for the parse-failure backstop passed without it —
   its invented wording matched no branch, so the generic fallback answered and
