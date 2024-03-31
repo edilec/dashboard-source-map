@@ -127,3 +127,47 @@ test('ALLOWED: a dashboard file that is a symbolic link INSIDE the root is read'
   assert.deepEqual(ruleIds(result.report), ['source-map-complete'])
   assert.equal(result.report.summary.dashboards, 2)
 })
+
+/**
+ * A LEXICAL PREFIX IS NOT A PATH BOUNDARY.
+ *
+ * `real.startsWith(realRoot)` is true for a sibling directory whose name merely
+ * begins with the root's -- `/tmp/x/root-archive` starts with `/tmp/x/root`.
+ * The separator is what makes it a boundary, and dropping it was a silent
+ * mutation: this sibling was read, compiled and mapped as though it were inside
+ * the root.
+ */
+test('a sibling directory whose name extends the root is outside it', (t) => {
+  const directory = temporary(t)
+  const root = join(directory, 'root')
+  tree(root)
+  const sibling = join(directory, 'root-archive')
+  mkdirSync(sibling, { recursive: true })
+  writeJson(sibling, 'planted.json', dashboard({
+    dashboardId: 'from-the-sibling',
+    tiles: [{ id: 'tile-arr', queryId: 'q-arr' }],
+    queries: [{ id: 'q-arr', modelIds: ['finance.arr_monthly'] }],
+  }))
+  symlinkSync(join(sibling, 'planted.json'), join(root, 'dashboards', 'planted.json'))
+
+  const out = join(directory, 'map.json')
+  const result = map(root, ['--out', out])
+  assert.equal(result.status, 2)
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'path-outside-root')
+  assert.equal(finding.location.file, 'dashboards/planted.json')
+  const written = JSON.parse(readFileSync(out, 'utf8'))
+  assert.deepEqual(written.dashboards.map((entry) => entry.dashboardId), ['revenue-weekly'])
+  assert.ok(!result.stdout.includes('from-the-sibling'), 'nothing from the sibling reaches the report')
+  assert.ok(!readFileSync(out, 'utf8').includes('from-the-sibling'), 'or the map')
+})
+
+test('a directory named like an export is reported as not a regular file, not as unparseable', (t) => {
+  const directory = temporary(t)
+  tree(directory)
+  mkdirSync(join(directory, 'dashboards', 'archive.json'), { recursive: true })
+  const result = map(directory)
+  assert.equal(result.status, 2)
+  const finding = result.report.findings.find((entry) => entry.ruleId === 'dashboard-unreadable')
+  assert.equal(finding.location.file, 'dashboards/archive.json')
+  assert.equal(finding.message, 'this dashboard export is not a regular file')
+})

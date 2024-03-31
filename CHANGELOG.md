@@ -36,6 +36,13 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Three path guards are pinned by the inputs that defeat them. Dropping the
+  separator from the confinement comparison — `real.startsWith(realRoot)` —
+  admits a sibling directory whose name merely extends the root's
+  (`root-archive` starts with `root`), and that mutation was silent; the
+  not-a-regular-file check and the destination guard's non-ENOENT `lstat` branch
+  were silent too, the second reachable by naming a destination under a regular
+  file, which fails with ENOTDIR rather than ENOENT.
 - A schema refusal that records no problem is now pinned as a refusal.
   `compileDashboard` returns `ok` when the problem list is empty, so deleting
   the `problems.add` inside `checkKeys` or `cleanString` — both silent — made a

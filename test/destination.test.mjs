@@ -170,3 +170,21 @@ test('the help text says the destination is unconfined rather than claiming a co
   assert.match(help.stdout, /NOT\s+confined to --root/)
   assert.match(help.stdout, /symbolically linked parent directory is followed/)
 })
+
+/**
+ * A destination whose parent is not a directory.
+ *
+ * `lstat` fails with ENOTDIR rather than ENOENT, and the guard's own comment
+ * says a non-ENOENT failure is refused rather than assumed absent. Nothing
+ * drove it, and removing the branch left the suite green: the run would then
+ * treat the destination as "does not exist yet" and fail later, from inside the
+ * write, with a different message.
+ */
+test('a destination under a regular file is refused before anything is opened', (t) => {
+  const { root } = prepared(t)
+  const result = attemptWrite(root, join(root, 'models.json', 'map.json'))
+  assert.equal(result.status, 2)
+  assert.equal(result.stdout, '')
+  assert.equal(result.stderr, 'dashboard-source-map: --out could not be inspected: ENOTDIR\n')
+  assert.equal(existsSync(join(root, 'models.json', 'map.json')), false)
+})
