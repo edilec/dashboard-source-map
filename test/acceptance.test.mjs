@@ -10,7 +10,7 @@
  * nobody reads the output.
  */
 
-import { mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -578,4 +578,98 @@ test('two export files declaring one dashboard id are not merged into one', (t) 
   }])
   const churn = written.models.find((model) => model.id === 'finance.churn_monthly')
   assert.deepEqual(churn.usedByTiles, [], 'no edge is claimed for a file no lineage was taken from')
+})
+
+/**
+ * THE COMPLETION CLAIM, AND THE INVARIANT IT NO LONGER DEPENDS ON.
+ *
+ * `source-map-complete` says every tile resolves. It is derived from the map --
+ * `brokenCount === 0 && unresolvedCount === 0` -- rather than from finding
+ * severities, because the severity-only form was right only by accident: every
+ * unresolved reason happens to carry a non-info finding.
+ *
+ * That accident is still true, which is why substituting the severity-only form
+ * back in changes no output today. So it is written down as a test: one
+ * scenario per unresolved reason the mapper can record, each asserting that an
+ * unresolved or broken tile always arrives with a finding a build would notice.
+ * The day a reason arrives without one, the severity-only form would have gone
+ * quietly wrong, and this test says so first.
+ */
+const UNRESOLVED_REASONS = {
+  'query-missing': {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 't', queryId: 'gone' }], queries: [{ id: 'q', modelIds: ['finance.arr_monthly'] }] }) },
+  },
+  'model-missing': {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 't', queryId: 'q' }], queries: [{ id: 'q', modelIds: ['nothing.provides_this'] }] }) },
+  },
+  'rename-ambiguous': {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 't', queryId: 'q' }], queries: [{ id: 'q', modelIds: ['old'] }] }) },
+    models: [
+      { id: 'a', previousIds: ['old'], freshness: freshness() },
+      { id: 'b', previousIds: ['old'], freshness: freshness() },
+    ],
+  },
+  'query-source-unresolved': {
+    dashboards: {
+      'd.json': dashboard({
+        tiles: [{ id: 't', queryId: 'q' }],
+        queries: [{ id: 'q', modelIds: ['finance.arr_monthly'], unresolvedSources: [{ reason: 'built at run time' }] }],
+      }),
+    },
+  },
+  'model-export-unavailable': {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 't', queryId: 'q' }], queries: [{ id: 'q', modelIds: ['finance.arr_monthly'] }] }) },
+    models: null,
+  },
+}
+
+test('every unresolved reason the mapper can record is named in the table below', () => {
+  const source = readFileSync(join(import.meta.dirname, '..', 'src', 'map.mjs'), 'utf8')
+  const recorded = new Set()
+  for (const match of source.matchAll(/unresolved\.push\(\{ reason: '([a-z-]+)'/g)) recorded.add(match[1])
+  assert.deepEqual([...recorded].sort(), Object.keys(UNRESOLVED_REASONS).sort())
+})
+
+for (const [reason, plan] of Object.entries(UNRESOLVED_REASONS)) {
+  test(`a tile unresolved by ${reason} always arrives with a finding a build would notice`, (t) => {
+    const directory = temporary(t)
+    tree(directory, {
+      dashboards: plan.dashboards,
+      models: plan.models === null ? null : (plan.models === undefined ? modelExport() : modelExport(plan.models)),
+    })
+    const out = join(directory, 'map.json')
+    const result = map(directory, ['--out', out])
+    const summary = result.report.summary
+    assert.ok(summary.broken + summary.unresolvedTiles > 0, `${reason} did not leave a tile unresolved`)
+    assert.ok(
+      summary.errors + summary.warnings > 0,
+      `${reason} left a tile unresolved with nothing above info severity`,
+    )
+    assert.notEqual(result.status, 0)
+    assert.ok(!ruleIds(result.report).includes('source-map-complete'))
+    const written = JSON.parse(readFileSync(out, 'utf8'))
+    assert.deepEqual(written.dashboards[0].tiles[0].unresolved.map((entry) => entry.reason), [reason])
+  })
+}
+
+test('a dashboard with no tiles is not a completed map: the claim needs something to be about', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: { 'empty.json': { format: 'edilec.dashboard/v1', dashboardId: 'empty', tiles: [], queries: [] } },
+    models: modelExport([]),
+  })
+  const result = map(directory)
+  assert.equal(result.status, 0)
+  assert.equal(result.report.summary.tiles, 0)
+  assert.deepEqual(ruleIds(result.report), [], 'no finding at all, and in particular no completion claim')
+})
+
+test('nothing is written when there is no map to write', (t) => {
+  const directory = temporary(t)
+  tree(directory)
+  const out = join(directory, 'map.json')
+  const result = map(directory, ['--dashboards', 'nowhere', '--out', out])
+  assert.equal(result.status, 2)
+  assert.deepEqual(uniqueRuleIds(result.report), ['no-dashboard-read'])
+  assert.equal(existsSync(out), false, 'a run with no map writes no file, not a file containing null')
 })

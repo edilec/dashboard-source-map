@@ -36,6 +36,13 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- `source-map-complete` is pinned against both ways of being vacuous: a run
+  whose only dashboard declares no tiles emits no completion claim (dropping
+  `tileCount > 0` was silent and made it claim "every one of 0 tile(s)"), and a
+  run with no map at all writes no file where it previously wrote `null`. The
+  invariant that lets the severity-only form of the claim still look correct —
+  every unresolved reason carries a non-info finding — now has a test per
+  reason, with a completeness check that fails when a new reason is added.
 - Three path guards are pinned by the inputs that defeat them. Dropping the
   separator from the confinement comparison — `real.startsWith(realRoot)` —
   admits a sibling directory whose name merely extends the root's
