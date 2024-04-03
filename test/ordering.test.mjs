@@ -150,6 +150,21 @@ test("a model's former ids are written in code-unit order", (t) => {
   assert.deepEqual(written.models[0].previousIds, BY_CODE_UNIT)
 })
 
+test("a tile's copy of a model's upstream ids is ordered too, not only the models section", (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: { 'd.json': dashboard({ tiles: [{ id: 't', queryId: 'q' }], queries: [{ id: 'q', modelIds: ['m'] }] }) },
+    models: modelExport([
+      { id: 'm', upstreamIds: [...NAMES].reverse(), freshness: freshness() },
+      ...NAMES.map((name) => ({ id: name, freshness: freshness() })),
+    ]),
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 0, result.stdout)
+  const written = JSON.parse(readFileSync(join(directory, 'map.json'), 'utf8'))
+  assert.deepEqual(written.dashboards[0].tiles[0].models[0].upstreamIds, BY_CODE_UNIT)
+})
+
 test('the claimants of an ambiguous former id are named in code-unit order', (t) => {
   const directory = temporary(t)
   tree(directory, {
@@ -196,8 +211,10 @@ test('findings sharing a file, a pointer and a rule are ordered by message, not 
         queries: [{
           id: 'q',
           unresolvedSources: [
-            { reason: 'zeta: the table name is built at run time' },
-            { reason: 'alpha: the warehouse is chosen by a variable' },
+            // 'Zebra' before 'apple' by code unit, after it by collation, so
+            // this pins the comparator as well as the key.
+            { reason: 'apple: the warehouse is chosen by a variable' },
+            { reason: 'Zebra: the table name is built at run time' },
           ],
         }],
       }),
@@ -209,8 +226,9 @@ test('findings sharing a file, a pointer and a rule are ordered by message, not 
     .filter((finding) => finding.ruleId === 'query-source-unresolved')
     .map((finding) => finding.message)
   assert.equal(messages.length, 2)
-  assert.match(messages[0], /alpha: the warehouse is chosen by a variable/)
-  assert.match(messages[1], /zeta: the table name is built at run time/)
+  assert.match(messages[0], /Zebra: the table name is built at run time/)
+  assert.match(messages[1], /apple: the warehouse is chosen by a variable/)
+  assert.notDeepEqual(messages, [...messages].sort((left, right) => left.localeCompare(right)))
 })
 
 /**
@@ -257,6 +275,17 @@ test('no rule id or summary key can discriminate code-unit ordering from collati
     [],
     'a summary key pair that collation orders differently: pin the human summary with it',
   )
+  // The code-point labels `controlCodePoints` sorts are the third such set:
+  // every label is `U+` and four upper-case hex digits, and collation orders
+  // those exactly as code units do.
+  const labels = []
+  for (const code of [...Array(0x20).keys(), 0x7f, ...Array(0x20).keys().map((n) => n + 0x80),
+    0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069, 0x2028, 0x2029]) {
+    labels.push(`U+${code.toString(16).toUpperCase().padStart(4, '0')}`)
+  }
+  assert.equal(labels.length, 78)
+  assert.deepEqual(disagreeing(labels), [], 'a code-point label pair collation orders differently')
+
   // The comparator these values cannot discriminate is still the one in use.
   assert.deepEqual(disagreeing(NAMES).length > 0, true, 'the NAMES above do discriminate')
 })

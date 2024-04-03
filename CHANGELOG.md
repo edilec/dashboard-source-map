@@ -36,6 +36,13 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- Two more ordering sites are pinned: the finding comparator's message key, now
+  driven by two unresolved sources whose collated order differs from their
+  code-unit order (`Zebra` before `apple` by code unit, after it by collation),
+  and a tile's own copy of a model's upstream ids, which the models section's
+  test did not reach. The code-point labels `controlCodePoints` sorts join the
+  rule ids and the summary keys as a set no input can discriminate, and the test
+  that establishes that fails the day one can.
 - `source-map-complete` is pinned against both ways of being vacuous: a run
   whose only dashboard declares no tiles emits no completion claim (dropping
   `tileCount > 0` was silent and made it claim "every one of 0 tile(s)"), and a
