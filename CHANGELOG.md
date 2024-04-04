@@ -36,6 +36,10 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- The canonical encoder's refusal of a value JSON has no form for is pinned.
+  `canonicalJson` is exported, so a caller can reach it, and replacing the throw
+  with a dropped key was silent — the one outcome a canonical serialiser must
+  not have, because two different values would then produce one document.
 - Two more ordering sites are pinned: the finding comparator's message key, now
   driven by two unresolved sources whose collated order differs from their
   code-unit order (`Zebra` before `apple` by code unit, after it by collation),

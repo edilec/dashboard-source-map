@@ -31,6 +31,19 @@ test('a non-finite number has no canonical form', () => {
   assert.throws(() => canonicalJson({ a: Number.NaN }), TypeError)
 })
 
+test('a value JSON has no form for is refused rather than dropped', () => {
+  // The encoder is exported, so this is reachable by a caller even though the
+  // maps this tool builds hold only JSON values. Dropping the throw would
+  // silently omit the key instead, which is the one outcome a canonical
+  // serialiser must not have: two different values would produce one document.
+  assert.throws(() => canonicalJson({ a: () => 1 }), /a value of type function has no canonical form/)
+  assert.throws(() => canonicalJson({ a: Symbol('s') }), /a value of type symbol has no canonical form/)
+  assert.throws(() => canonicalJson({ a: 1n }), /a value of type bigint has no canonical form/)
+  assert.throws(() => canonicalJson(undefined), /a value of type undefined has no canonical form/)
+  // And the accepted neighbours, so the guard is not simply refusing everything.
+  assert.equal(canonicalJson({ a: null, b: false, c: 0, d: '', e: [], f: {} }), '{"a":null,"b":false,"c":0,"d":"","e":[],"f":{}}')
+})
+
 test('nesting past the depth bound throws rather than recursing', () => {
   let value = 'leaf'
   for (let depth = 0; depth <= MAX_DEPTH; depth += 1) value = { nested: value }
