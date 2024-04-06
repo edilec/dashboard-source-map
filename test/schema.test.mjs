@@ -274,3 +274,62 @@ test('an unsupported format longer than the excerpt bound is cut, not echoed who
   assert.ok(!finding.message.includes(long), 'the whole declared format is not reproduced')
   assert.ok(!result.stdout.includes(long))
 })
+
+/**
+ * A KEY THAT RENDERS AS A DIFFERENT KEY.
+ *
+ * Pointers are built from document keys, and the report strips the control
+ * class from every string it renders. `ti<U+202E><U+0085>tle` therefore renders
+ * as `title`, and the finding read:
+ *
+ *   /tiles/0/title is not a key this schema defines; allowed keys are id, queryId, title
+ *
+ * about a key this schema does define. That is the `kWh -> kWh` finding in
+ * another costume: the two values differ only in characters the renderer
+ * strips, so the sentence reads as false and the reader cannot act on it. The
+ * key is named by its code points instead, on the object that carries it.
+ */
+test('a key that only renders as a legal key is named by its code points, not by its rendering', (t) => {
+  const directory = temporary(t)
+  const forged = `ti${String.fromCharCode(0x202e)}${String.fromCharCode(0x85)}tle`
+  tree(directory, {
+    dashboards: {
+      'revenue.json': dashboard(),
+      'forged.json': {
+        format: 'edilec.dashboard/v1',
+        dashboardId: 'forged',
+        tiles: [{ id: 't', queryId: 'q', [forged]: 'x' }],
+        queries: [{ id: 'q', modelIds: ['finance.arr_monthly'] }],
+      },
+    },
+  })
+  const result = map(directory, ['--out', join(directory, 'map.json')])
+  assert.equal(result.status, 2)
+  assert.deepEqual(problems(result.report, 'dashboard-invalid'), [{
+    pointer: '/tiles/0',
+    message:
+      '/tiles/0 has a key carrying U+0085, U+202E, which this report strips before rendering, so the key cannot '
+      + 'be named here; no key this schema defines contains one',
+  }])
+  assert.ok(
+    !JSON.stringify(result.report).includes('/tiles/0/title'),
+    'the rendered key must never be reported as the key that was there',
+  )
+  assert.ok(!result.stdout.includes(String.fromCharCode(0x202e)))
+  assert.ok(!readFileSync(join(directory, 'map.json'), 'utf8').includes(String.fromCharCode(0x202e)))
+})
+
+test('the legal key of the same name is still accepted', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    dashboards: {
+      'd.json': dashboard({
+        tiles: [{ id: 't', queryId: 'q', title: 'ARR' }],
+        queries: [{ id: 'q', modelIds: ['finance.arr_monthly'] }],
+      }),
+    },
+  })
+  const result = map(directory)
+  assert.equal(result.status, 0, result.stdout)
+  assert.ok(!ruleIds(result.report).includes('dashboard-invalid'))
+})

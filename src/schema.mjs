@@ -21,7 +21,7 @@
  */
 
 import { LIMITS } from './limits.mjs'
-import { excerpt, isPlainObject, sanitise, typeName } from './text.mjs'
+import { controlCodePoints, excerpt, isPlainObject, sanitise, typeName } from './text.mjs'
 
 export const DASHBOARD_FORMAT = 'edilec.dashboard/v1'
 export const MODEL_FORMAT = 'edilec.model-export/v1'
@@ -65,6 +65,21 @@ function checkKeys(value, allowed, required, pointer, problems) {
     return false
   }
   for (const key of Object.keys(value).sort()) {
+    // A key is document text, and the pointer built from it is rendered with
+    // the control class stripped. `ti<U+202E><U+0085>tle` renders as `title`,
+    // so the report would read "/tiles/0/title is not a key this schema
+    // defines" about a key this schema does define -- the `kWh -> kWh` finding
+    // again, a sentence that reads as false and cannot be acted on. The key is
+    // named by its code points instead, on the object that carries it.
+    const points = controlCodePoints(key)
+    if (points.length > 0) {
+      problems.add(
+        pointer,
+        `has a key carrying ${points.join(', ')}, which this report strips before rendering, so the key cannot be `
+        + 'named here; no key this schema defines contains one',
+      )
+      continue
+    }
     if (!allowed.includes(key)) {
       problems.add(`${pointer}/${key}`, `is not a key this schema defines; allowed keys are ${allowed.join(', ')}`)
     }

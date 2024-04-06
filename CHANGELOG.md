@@ -36,6 +36,15 @@ Renaming a `ruleId` is a breaking change and is recorded here.
 
 ### Fixed
 
+- A document key that only *renders* as a legal key is refused by its code
+  points rather than by its rendering. Pointers are built from keys and the
+  report strips the control class, so a tile key `ti<U+202E><U+0085>tle`
+  produced `"/tiles/0/title is not a key this schema defines; allowed keys are
+  id, queryId, title"` — a sentence that names a key the schema does define.
+  That is the `kWh -> kWh` finding in another costume: the two values differ
+  only in characters the renderer strips, so the reader is told something that
+  reads as false. The problem is now recorded on the object that carries the
+  key, naming U+0085 and U+202E.
 - The canonical encoder's refusal of a value JSON has no form for is pinned.
   `canonicalJson` is exported, so a caller can reach it, and replacing the throw
   with a dropped key was silent — the one outcome a canonical serialiser must
