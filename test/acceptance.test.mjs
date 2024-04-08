@@ -16,7 +16,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  dashboard, freshness, map, modelExport, runJson, ruleIds, temporary, tree, uniqueRuleIds, writeJson,
+  ROOT, dashboard, freshness, map, modelExport, runJson, ruleIds, temporary, tree, uniqueRuleIds, writeJson,
 } from './support.mjs'
 
 test('THE GOOD CASE: a complete pair of exports resolves with nothing to report', (t) => {
@@ -31,6 +31,29 @@ test('THE GOOD CASE: a complete pair of exports resolves with nothing to report'
   assert.equal(result.report.summary.tiles, 2)
   assert.equal(result.report.summary.broken, 0)
   assert.equal(result.report.summary.unresolvedTiles, 0)
+})
+
+test('the completion rule describes a raw model that has no transformation', (t) => {
+  const directory = temporary(t)
+  tree(directory, {
+    models: modelExport([
+      { id: 'finance.arr_monthly', freshness: freshness() },
+      { id: 'finance.churn_monthly', freshness: freshness() },
+    ]),
+  })
+  const result = map(directory)
+  assert.equal(result.status, 0, 'a raw source is valid without a transformation')
+  assert.ok(ruleIds(result.report).includes('source-map-complete'))
+
+  const row = readFileSync(join(ROOT, 'README.md'), 'utf8').split('\n')
+    .find((line) => line.startsWith('| `source-map-complete` |'))
+  assert.ok(row, 'the public rule table names the claim the CLI just made')
+  const description = row.split('|')[3]
+  assert.doesNotMatch(
+    description,
+    /(?:to|and) a transformation/i,
+    'the rule table must not require lineage a valid raw source cannot have',
+  )
 })
 
 test('ACCEPTANCE: a recorded rename resolves, and every impacted tile is named', (t) => {
