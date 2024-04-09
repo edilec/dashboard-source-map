@@ -293,6 +293,11 @@ that differs between Node builds, which would let two correct machines disagree.
   and never opened, such as a `NOTES.md` sitting in the dashboard directory, and
   including a dashboard whose format it refused — is refused, because `dev` plus
   `ino` is the only thing that sees it;
+- a **dangling listed dashboard link** that points to the new map is refused,
+  including when the link has another link in between. The guard compares the
+  final named paths before the new destination has an inode. A link to a
+  different missing file remains an incomplete dashboard input and does not
+  prevent writing the map;
 - the destination directory must already exist; this tool never creates one.
 
 A refused destination is a configuration error: exit `2` with empty stdout. So

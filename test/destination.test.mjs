@@ -22,7 +22,7 @@
  * below, and the help text and README say the same thing.
  */
 
-import { existsSync, linkSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, linkSync, mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -133,6 +133,55 @@ test('ALLOWED: a fresh path in an existing directory is written', (t) => {
   assert.equal(result.status, 0)
   assert.ok(result.stdout.startsWith('{'))
   assert.match(readFileSync(out, 'utf8'), /"edilec\.source-map\/v1"/)
+})
+
+test('ALLOWED: a distinct dangling dashboard link remains unreadable after an incomplete map write', (t) => {
+  const { directory, root } = prepared(t)
+  const dashboard = join(root, 'dashboards/revenue.json')
+  const out = join(directory, 'map.json')
+  const distinct = join(directory, 'other-missing.json')
+  const original = readFileSync(dashboard, 'utf8')
+  assert.match(original, /edilec\.dashboard\/v1/)
+  // The dashboard is a named candidate, but its distinct missing target is
+  // not the map destination and must not make all incomplete writes illegal.
+  unlinkSync(dashboard)
+  symlinkSync('../../other-missing.json', dashboard)
+  const result = attemptWrite(root, out)
+  assert.equal(result.status, 2)
+  assert.equal(JSON.parse(result.stdout).status, 'incomplete')
+  assert.equal(existsSync(out), true)
+  assert.equal(existsSync(dashboard), false)
+  assert.equal(existsSync(distinct), false)
+})
+
+test('a dangling dashboard link to a new map is refused before writing', (t) => {
+  const { directory, root } = prepared(t)
+  const dashboard = join(root, 'dashboards/revenue.json')
+  const out = join(directory, 'map.json')
+  unlinkSync(dashboard)
+  symlinkSync('../../map.json', dashboard)
+  const result = attemptWrite(root, out)
+  assert.equal(result.status, 2)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /--out names an input path/)
+  assert.equal(existsSync(out), false)
+  assert.equal(existsSync(dashboard), false)
+})
+
+test('two dangling dashboard-link hops to a new map are refused', (t) => {
+  const { directory, root } = prepared(t)
+  const dashboard = join(root, 'dashboards/revenue.json')
+  const middle = join(root, 'dashboards/middle.json')
+  const out = join(directory, 'map.json')
+  unlinkSync(dashboard)
+  symlinkSync('middle.json', dashboard)
+  symlinkSync('../../map.json', middle)
+  const result = attemptWrite(root, out)
+  assert.equal(result.status, 2)
+  assert.equal(result.stdout, '')
+  assert.match(result.stderr, /--out names an input path/)
+  assert.equal(existsSync(out), false)
+  assert.equal(existsSync(dashboard), false)
 })
 
 test('ALLOWED: an existing regular file that is not an input is overwritten', (t) => {

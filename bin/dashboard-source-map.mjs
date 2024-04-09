@@ -84,7 +84,9 @@ Options:
   --out FILE              Write the source map here. The destination is checked
                           first: a symbolic link there is refused, and a hard
                           link to any file this run resolved -- including one it
-                          only listed -- is refused. The destination is NOT
+                          only listed -- is refused. A dangling listed input
+                          link to a new output is refused, including two hops.
+                          The destination is NOT
                           confined to --root: it is an ordinary path and a
                           symbolically linked parent directory is followed,
                           exactly as it is for cp and shell redirection.
