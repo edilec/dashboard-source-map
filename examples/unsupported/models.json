@@ -1,0 +1,52 @@
+{
+  "format": "edilec.model-export/v1",
+  "models": [
+    {
+      "id": "raw.subscriptions",
+      "freshness": {
+        "observedAt": "2026-09-19T01:05:00Z",
+        "source": "load-log"
+      }
+    },
+    {
+      "id": "finance.arr_monthly",
+      "upstreamIds": [
+        "raw.subscriptions"
+      ],
+      "transformation": {
+        "id": "arr-rollup",
+        "version": "2.1.0"
+      },
+      "freshness": {
+        "observedAt": "2026-09-19T02:10:00Z",
+        "source": "load-log"
+      }
+    },
+    {
+      "id": "finance.churn_monthly",
+      "upstreamIds": [
+        "raw.subscriptions"
+      ],
+      "transformation": {
+        "id": "churn-rollup",
+        "version": "1.4.2"
+      },
+      "freshness": {
+        "observedAt": "2026-09-19T02:12:00Z",
+        "source": "load-log"
+      }
+    },
+    {
+      "id": "marketing.spend_monthly",
+      "upstreamIds": [],
+      "transformation": {
+        "id": "spend-rollup",
+        "version": "1.0.0"
+      },
+      "freshness": {
+        "observedAt": "2026-09-19T02:20:00Z",
+        "source": "load-log"
+      }
+    }
+  ]
+}
